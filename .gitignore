@@ -1,0 +1,18 @@
+node_modules/
+__pycache__/
+*.pyc
+
+# Chrome profiles / browser session data
+.chrome-*/
+C/
+
+# Secrets & session data
+certs/
+clearance.json
+data/cookies.txt
+
+# Logs & runtime artifacts
+*.log
+*.out
+nul
+temp-upload/

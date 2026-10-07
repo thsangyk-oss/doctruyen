@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thư viện truyện</title>
+<link rel="icon" href="/icon-192.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#f5f1e8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Truyện">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="stylesheet" href="/style.css?v=3">
+</head>
+<body data-theme="sepia">
+
+<div id="progress-bar"></div>
+
+<header id="topbar">
+  <button id="btn-menu" class="icon-btn" title="Mục lục">☰</button>
+  <div id="novel-title">Thư viện</div>
+  <div class="spacer"></div>
+  <button id="btn-lib" class="icon-btn" title="Thư viện">📚</button>
+  <button id="btn-wake" class="icon-btn" title="Giữ màn hình sáng">☾</button>
+  <button id="btn-tts" class="icon-btn" title="Nghe truyện">🔊</button>
+  <button id="btn-theme" class="icon-btn" title="Đổi giao diện">◐</button>
+  <button id="btn-settings" class="icon-btn" title="Cài đặt">Aa</button>
+</header>
+
+<div id="library">
+  <div id="lib-grid"></div>
+</div>
+
+<div id="layout">
+  <aside id="sidebar">
+    <div id="sidebar-head">
+      <input id="search" type="search" placeholder="Tìm chương… (vd: 26)" autocomplete="off">
+      <div id="jump-row">
+        <input id="jump" type="number" min="1" placeholder="Chương số…">
+        <button id="btn-jump">Đi</button>
+      </div>
+    </div>
+    <div id="chapter-list"></div>
+  </aside>
+  <div id="sidebar-overlay"></div>
+
+  <main id="reader">
+    <div id="content-wrap">
+      <div id="chap-meta"></div>
+      <h1 id="chap-title"></h1>
+      <div id="chap-body"></div>
+      <div id="nav-bottom">
+        <button id="prev-b" class="nav-btn">← Chương trước</button>
+        <button id="toc-b" class="nav-btn">Mục lục</button>
+        <button id="next-b" class="nav-btn">Chương sau →</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="settings-panel">
+  <div class="set-row">
+    <label>Cỡ chữ</label>
+    <div class="set-ctl">
+      <button data-fs="-1">A−</button>
+      <span id="fs-val"></span>
+      <button data-fs="1">A+</button>
+    </div>
+  </div>
+  <div class="set-row">
+    <label>Giãn dòng</label>
+    <div class="set-ctl">
+      <button data-lh="-1">−</button>
+      <span id="lh-val"></span>
+      <button data-lh="1">+</button>
+    </div>
+  </div>
+  <div class="set-row">
+    <label>Phông chữ</label>
+    <div class="set-ctl seg" id="font-seg">
+      <button data-font="serif">Serif</button>
+      <button data-font="sans">Sans</button>
+      <button data-font="f25">F25</button>
+    </div>
+  </div>
+  <div class="set-row">
+    <label>Giao diện</label>
+    <div class="set-ctl seg" id="theme-seg">
+      <button data-theme-val="light">Sáng</button>
+      <button data-theme-val="sepia">Sepia</button>
+      <button data-theme-val="dark">Tối</button>
+    </div>
+  </div>
+  <div class="set-row">
+    <label>Kiểu đọc</label>
+    <div class="set-ctl seg" id="layout-seg">
+      <button data-layout="scroll">Cuộn</button>
+      <button data-layout="book">Sách</button>
+    </div>
+  </div>
+  <div class="set-row">
+    <label>Hiệu ứng lật</label>
+    <div class="set-ctl seg" id="flip-seg">
+      <button data-flip="on">Bật</button>
+      <button data-flip="off">Tắt</button>
+    </div>
+  </div>
+  <div class="set-row">
+    <label>Độ rộng</label>
+    <div class="set-ctl seg" id="width-seg">
+      <button data-width="narrow">Hẹp</button>
+      <button data-width="normal">Vừa</button>
+      <button data-width="wide">Rộng</button>
+    </div>
+  </div>
+</div>
+
+<div id="tts-bar">
+  <button id="tts-play" class="tts-btn" title="Phát / Tạm dừng">▶</button>
+  <button id="tts-prev" class="tts-btn" title="Đoạn trước">⏮</button>
+  <button id="tts-next" class="tts-btn" title="Đoạn sau">⏭</button>
+  <select id="tts-voice" title="Giọng đọc"></select>
+  <button id="tts-speed" class="tts-btn" title="Tốc độ">1x</button>
+  <span id="tts-status"></span>
+  <button id="tts-close" class="tts-btn" title="Đóng">✕</button>
+</div>
+
+<div id="resume-wrap">
+  <button id="stay-btn" title="Đặt vị trí đang xem làm tiến độ mới">Ở lại</button>
+  <button id="resume-pill" title="Quay về chương đang đọc">▶ Đọc tiếp chương <b id="resume-num"></b></button>
+</div>
+
+<div id="page-ind"></div>
+<div id="toast"></div>
+
+<script src="/app.js?v=4"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
