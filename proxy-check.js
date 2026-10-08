@@ -83,9 +83,25 @@ async function fetchCandidates() {
 
 const TIMEOUT = 7000, CONC = 60;
 const alive = [];
+const aliveSet = new Set();
 let done = 0, tested = 0;
 const SKIP = parseInt(process.argv[3] || "0", 10);
-const MAX_TEST = parseInt(process.argv[2] || "400", 10) + SKIP;
+const MAX_TEST = parseInt(process.argv[2] || "15000", 10) + SKIP;
+const ADD = parseInt(process.env.PROXY_ADD || "250", 10);   // new proxies to find per run
+const MAXPOOL = parseInt(process.env.PROXY_MAX || "1500", 10);
+let TARGET = Infinity; // pool phase re-validates everything; fresh phase sets a real target
+
+// live progress for the UI's crawler-status panel
+const STATUS_FILE = "proxy-check.status.json";
+function writeStatus(phase, extra) {
+  try {
+    fs.writeFileSync(STATUS_FILE, JSON.stringify({
+      running: true, phase, tested, alive: alive.length,
+      target: isFinite(TARGET) ? TARGET : null,
+      updated: Date.now(), ...extra,
+    }));
+  } catch {}
+}
 
 function check(px) {
   return new Promise((res) => {
@@ -99,22 +115,67 @@ function check(px) {
   });
 }
 
-(async () => {
-  const lists = await fetchCandidates();
-  console.log("total candidates:", lists.length);
-  const queue = lists.slice(SKIP, MAX_TEST);
+// bounded-concurrency runner over a candidate list; returns when the list is
+// exhausted or the pool reached TARGET
+async function runChecks(queue, phase) {
   const running = new Set();
   for (const px of queue) {
+    if (alive.length >= TARGET) break;
+    if (aliveSet.has(px)) continue;
     const p = check(px).then((r) => {
       running.delete(p); tested++;
-      if (r) { alive.push(r); console.log(`ALIVE ${r.px} ${r.ms}ms  (tested=${tested} alive=${alive.length})`); }
+      if (r && !aliveSet.has(r.px)) {
+        aliveSet.add(r.px); alive.push(r);
+        console.log(`ALIVE ${r.px} ${r.ms}ms  (${phase} tested=${tested} alive=${alive.length})`);
+      }
+      if (tested % 50 === 0) writeStatus(phase);
     });
     running.add(p);
     if (running.size >= CONC) await Promise.race(running);
-    if (alive.length >= 300) break; // enough
   }
   await Promise.allSettled([...running]);
+  writeStatus(phase);
+}
+
+// existing pool files — re-validated every refresh so dead proxies drop out
+function loadPool() {
+  const out = [];
+  try {
+    for (const f of fs.readdirSync(".").filter((f) => /^proxy_alive.*\.txt$/.test(f)))
+      for (const s of fs.readFileSync(f, "utf8").split(/\r?\n/)) {
+        const p = s.trim();
+        if (p) out.push(p);
+      }
+  } catch {}
+  return [...new Set(out)];
+}
+
+(async () => {
+  writeStatus("fetch", { candidates: 0 });
+  // phase 1: re-validate the CURRENT pool — survivors keep their slots,
+  // dead proxies are simply not re-added
+  const pool = loadPool();
+  const lists = await fetchCandidates();
+  console.log(`total candidates: ${lists.length} fresh + ${pool.length} existing pool`);
+  writeStatus("validate-pool", { candidates: pool.length + lists.length });
+
+  await runChecks(pool, "pool");           // re-validate existing first
+  TARGET = Math.min(MAXPOOL, alive.length + ADD); // "find more" = survivors + ADD
+  await runChecks(lists.slice(SKIP, MAX_TEST), "fresh"); // then top up
+
+  // merge: all alive go into proxy_alive.txt; drop the numbered extras so
+  // stale entries can't sneak back in (site-specific *_wt files untouched)
   const OUT = process.env.PROXY_OUT || "proxy_alive.txt";
   fs.writeFileSync(OUT, alive.map((a) => a.px).join("\n") + "\n");
+  for (const f of fs.readdirSync(".").filter((f) => /^proxy_alive.*\.txt$/.test(f))) {
+    // site-specific files (proxy_alive_wt) are managed by their own worker
+    if (f !== OUT && f !== "proxy_alive_wt.txt") try { fs.unlinkSync(f); } catch {}
+  }
+  try {
+    fs.writeFileSync(STATUS_FILE, JSON.stringify({
+      running: false, phase: "done", tested, alive: alive.length,
+      target: isFinite(TARGET) ? TARGET : null, updated: Date.now(),
+    }));
+  } catch {}
   console.log(`\nDONE: ${alive.length}/${tested} alive -> ${OUT}`);
 })();

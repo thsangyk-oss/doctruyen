@@ -52,8 +52,23 @@ process.on("uncaughtException", (e) => {
 });
 
 const job = { status: "running", done: 0, total: 0, fail: 0, updated: Date.now() };
+// lane pool hooks — set once the pool is built; saveJob then reports live
+// worker/lane/IP counts to job.json so the library UI can show them
+let lanePool = null, parallelWorkers = 0;
+function stampStats() {
+  if (!lanePool) return;
+  const now = Date.now();
+  job.stats = {
+    w: parallelWorkers,
+    act: lanePool.filter((l) => l.inUse && !l.dead).length,
+    cool: lanePool.filter((l) => !l.dead && !l.inUse && l.coolUntil > now).length,
+    ready: lanePool.filter((l) => !l.dead && !l.inUse && l.coolUntil <= now).length,
+    pool: lanePool.length,
+  };
+}
 function saveJob() {
   job.updated = Date.now();
+  stampStats();
   try { fs.writeFileSync(JOB_FILE, JSON.stringify(job), "utf8"); } catch {}
 }
 function have(n) {
@@ -145,10 +160,20 @@ async function scrapeViaApi(page, n) {
   if (r.status !== 200) return { status: "err", err: "http" + r.status };
   try {
     const j = JSON.parse(r.text);
-    // content arrives wrapped in literal <content>...</content> tags
+    // content arrives wrapped in literal <content>...</content> tags;
+    // some chapters carry HTML markup (<p>..</p><br>) instead of \n —
+    // normalize: tag boundaries -> newlines, strip all tags, decode entities
     const content = (j.content || "")
-      .replace(/^\s*<content>/i, "").replace(/<\/content>\s*$/i, "");
-    const paras = content.split("\n").map((s) => s.trim()).filter(Boolean);
+      .replace(/^\s*<content>/i, "").replace(/<\/content>\s*$/i, "")
+      .replace(/^\s*<!DOCTYPE[^>]*>/i, "")
+      .replace(/<\/(p|div|li|h\d)\s*>/gi, "\n").replace(/<p[^>]*>/gi, "\n")
+      .replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/g, " ").replace(/&quot;/g, '"')
+      .replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&#(\d+);/g, (_, c) => String.fromCharCode(+c))
+      .replace(/&amp;/g, "&"); // &amp; decodes last: &amp;lt; must become &lt; not <
+    const paras = content.split("\n").map((s) => s.trim())
+      .filter((s) => s && !/^Chương\s*\d+\s*[:.]/i.test(s)); // drop dup header
     if (!paras.length) {
       saveChap(n, j.title || "", [], true);
       return { status: "empty-site", paras: 0 };
@@ -288,6 +313,7 @@ async function clearVerify(page) {
     for (let left = ms; left > 0; left -= 15000) {
       await sleep(Math.min(15000, left));
       job.updated = Date.now();
+      stampStats();
       try { fs.writeFileSync(JOB_FILE, JSON.stringify(job), "utf8"); } catch {}
     }
     delete job.note; saveJob();
@@ -311,6 +337,7 @@ async function clearVerify(page) {
     }
     logLine(`proxy pool: ${n} lanes loaded`);
   } catch { logLine("no proxy_alive.txt — direct IP only"); }
+  lanePool = lanes;
 
   async function activate(lane) {
     if (!lane.px) {
@@ -408,7 +435,9 @@ async function clearVerify(page) {
   // direct-IP lane behaves the same way (it keeps its old budget too).
   const INTRA_DELAY = 150;       // light pacing inside a lane
   const LANE_REQ_CAP = 40;       // don't ride one lane forever
-  const PARALLEL = 10;           // concurrent proxy lanes — each is its own IP
+  const PARALLEL = +ARGS.parallel || 10; // concurrent proxy lanes — each is
+                                       // its own IP; server passes --parallel
+  parallelWorkers = PARALLEL;
   let done = 0, fail = 0;
   const t0 = Date.now();
   // done = unique chapter files on disk — a Set, because stub re-verification
@@ -485,7 +514,6 @@ async function clearVerify(page) {
         savedSet.add(n); done = savedSet.size;
         errStreak = 0; laneReqs++;
         job.done = done;
-        job.proxy = `${lanes.filter((l) => l.inUse).length}/${lanes.filter((l) => !l.dead).length} lanes`;
         saveJob();
         if (done % 20 === 0) {
           const rate = done / ((Date.now() - t0) / 60000);

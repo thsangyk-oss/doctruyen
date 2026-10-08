@@ -1,12 +1,12 @@
 // Đọc Truyện service worker — just enough for PWA installability.
 // Cache-first for own static assets; network for everything else
 // (API/chapter data must always be live for progress sync).
-const CACHE = "doctruyen-v2";
+const CACHE = "doctruyen-v14";
 const STATIC = [
   "/",
   "/index.html",
-  "/app.js?v=4",
-  "/style.css?v=3",
+  "/app.js?v=16",
+  "/style.css?v=13",
   "/manifest.webmanifest",
   "/icon-192.png",
   "/icon-512.png",

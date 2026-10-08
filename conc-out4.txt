@@ -1,0 +1,4 @@
+pool: 130 chunks ~1200 chars each, model=deepseek-v4-flash
+L=48  ok=48/48  429=0  other=0  wall=14.6s  med=10.3s  max=14.6s  ~197.3 chunks/min
+L=64  ok=63/64  429=0  other=1  wall=14.1s  med=9.9s  max=14.1s  ~268.1 chunks/min
+    err: Unexpected non-whitespace character after JSON at 

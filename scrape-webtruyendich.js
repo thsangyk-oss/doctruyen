@@ -64,9 +64,23 @@ process.on("uncaughtException", (e) => {
 
 let lastBeat = Date.now(); // updated by EVERY heartbeat write, not just saves —
 const job = { status: "running", done: 0, total: 0, fail: 0, updated: Date.now() };
+// lane pool hooks for live stats in job.json (workers/lanes/IPs for the UI)
+let lanePool = null, parallelWorkers = 0;
+function stampStats() {
+  if (!lanePool) return;
+  const now = Date.now();
+  job.stats = {
+    w: parallelWorkers,
+    act: lanePool.filter((l) => l.inUse && !l.dead).length,
+    cool: lanePool.filter((l) => !l.dead && !l.inUse && l.coolUntil > now).length,
+    ready: lanePool.filter((l) => !l.dead && !l.inUse && l.coolUntil <= now).length,
+    pool: lanePool.length,
+  };
+}
 function saveJob() {
   job.updated = Date.now();
   lastBeat = job.updated; // a waiting worker still ticks; a hung one doesn't
+  stampStats();
   try { fs.writeFileSync(JOB_FILE, JSON.stringify(job), "utf8"); } catch {}
 }
 const indexMap = {};
@@ -93,6 +107,8 @@ async function waitPulse(ms, note) {
   for (let left = ms; left > 0; left -= 15000) {
     await sleep(Math.min(15000, left));
     job.updated = Date.now();
+    lastBeat = job.updated;
+    stampStats();
     try { fs.writeFileSync(JOB_FILE, JSON.stringify(job), "utf8"); } catch {}
   }
   delete job.note; saveJob();
@@ -255,6 +271,7 @@ const SOURCE_ID = "3"; // fanqie edition id on webtruyendich (captured from live
       }
     logLine(`proxy pool: ${wtGood.size} proven + ${lanes.length - 1 - wtGood.size} candidates (${wtBad.size} known-bad skipped)`);
   }
+  lanePool = lanes;
   const markGood = (px) => {
     if (!px || wtGood.has(px)) return;
     wtGood.add(px);
@@ -336,6 +353,7 @@ const SOURCE_ID = "3"; // fanqie edition id on webtruyendich (captured from live
         .sort((a, b) => (b.proven - a.proven) || (a.coolUntil - b.coolUntil))[0];
       if (lane) {
         lane.inUse = true;
+        saveJob(); // heartbeat — serial activates take minutes, don't look hung
         let r = null;
         try { r = await pTimeout(activate(lane, anySlug), 90000, "activate"); }
         catch (e) {
@@ -375,7 +393,8 @@ const SOURCE_ID = "3"; // fanqie edition id on webtruyendich (captured from live
   }
 
   // ---------- workers ----------
-  const PARALLEL = 6;
+  const PARALLEL = +ARGS.parallel || 6; // --parallel from server crawl-config
+  parallelWorkers = PARALLEL;
   const INTRA_DELAY = 400;
   const LANE_REQ_CAP = 25; // this site's pacing grows fast — rotate earlier
   let done = 0, fail = 0;

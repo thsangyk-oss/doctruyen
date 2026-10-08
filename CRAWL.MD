@@ -253,3 +253,91 @@ body: {novel_id, source_id, chapter_url, translator:"gemini-3.5-flash-lite",
 **Gating** — chapter page nav bị CF managed challenge ("Chờ một chút"): 1 click Turnstile → clear cho cả context. Direct lane được ~21 req/lượt trước LIMITED; POST latency tăng dần theo IP (pacing server-side) → rotate sớm (`LANE_REQ_CAP=25`). Chapter LIST không gated — fetch thẳng bằng Node, không cần browser.
 
 **Chạy**: `node scrape-webtruyendich.js --dir=data/books/<id> --novel=<id> --source=fanqie --book-slug=<slug> --start=<n>` — profile riêng `.chrome-profile-wt`, chỉ ghi chương ≥ `--start`, title strip prefix `Chương N:` cho khớp format cũ.
+
+## Nguồn phụ 2: `m.akshu88.com` — truyện gốc Trung (`scrape-akshu.js`)
+
+Worker cho library phụ **"Truyện gốc Trung"** (sách có `meta.lib="cn"`, id dạng
+`cn-<bookid>`). Không cần puppeteer/proxy: site không có Cloudflare, không
+rate-limit đáng kể — **Node fetch thuần**, GBK decode bằng `TextDecoder("gbk")`.
+
+**Endpoint:**
+```
+GET /book/<bid>.html        → meta (h1 trong .info, 作者, .imgbox img cover)
+                            + catalog trang 1 (sau marker h2#first "全部目录")
+GET /book/<bid>/<p>/        → catalog trang p (45 ch/trang, "共N页" = tổng trang)
+GET /book/<bid>/<cid>.html  → chương: h1.title + #content (para ngăn bởi <br>)
+GET /book/<bid>/<cid>_<k>.html → trang k của chương (title có "(第k页/共M页)")
+```
+
+**Anti-scrape của site**: một số chương chèn warning "请关闭浏览器…" xen giữa
+và **lặp lại đoạn cuối nhiều lần** trong #content; có chương còn có trang `_2`
+giả chứa toàn nội dung lặp. Worker dedupe theo block: block nào có ≥60% para
+(len≥8) đã thấy trong `seen` của chương → bỏ. Nav/bookmark anchor nằm trong
+#content → lọc bằng JUNK_ANY/JUNK_EXACT.
+
+**Đánh số chương**: `chapters/_cidmap.json` = map num→cid (cid của site không
+tuần tự). Num gán theo thứ tự catalog, ổn định giữa các lần update — cid đã
+biết giữ nguyên số, cid mới lấy `nextFree`. `meta.total` = số chương thực có
+(site nhảy số: vd 1172 mục cho "第1177章").
+
+**Chạy**: `node scrape-akshu.js --dir=data/books/cn-<bid> [--max=N --delay=250]`
+— bookId lấy từ `meta.json` (server.js ghi khi nhận POST /api/books với link
+akshu88). Update chương mới = chạy lại, cidmap biết cid nào đã có.
+
+## Nguồn phụ 3: `hongyebookzhai.com` — truyện gốc Trung (cùng `scrape-akshu.js`)
+
+Cùng họ CMS JieQi với akshu88 → worker chọn profile theo `meta.site`
+(`"akshu88"` mặc định / `"hongye"`). Id sách dạng `cn-hy-<bookid>`.
+
+**Khác biệt so với akshu88:**
+```
+GET /shuzhai/<bid>/            → meta qua og: tags (og:novel:book_name,
+                                 og:novel:author, og:image) + TOÀN BỘ catalog
+                                 trên 1 trang (sau marker dt "》正文")
+GET /shuzhai/<bid>/<cid>.html  → chương: h1 đầu tiên + #content, 1 trang/chương
+                                 (không thấy poison/warning như akshu88)
+```
+- Catalog KHÔNG phân trang (`pagedCatalog:false`) — 1 fetch lấy hết.
+- Volume header "第N卷：…" trong catalog bị skip (không phải chương).
+- Chapter num trùng lặp là chuyện bình thường (vd sách 157662 có 788×2 và
+  1173×2 — nửa trên/dưới, cid khác nhau → giữ cả hai).
+- `og:image` có thể 404 ngay từ nguồn (sách không có cover upload) → meta.cover
+  để trống, UI dùng placeholder.
+
+## Dịch AI: OpenCode Go (`opencode.js` + `translate.js`)
+
+Key cards lưu ở `data/translate.json` `{keys:[{name:"api1",key,model,models[]}],
+active}`. Server routes: `GET/POST /api/translate[/keys[/<name>]]`,
+`GET /api/translate/models?card=`; per-book `POST/DELETE/GET /api/book/<id>/translate`
+spawn/kill worker `translate.js` (song song với scrape queue, map `trRunning`).
+
+**API**: base `https://opencode.ai/zen/go/v1`, Bearer key, nên gửi UA riêng +
+`x-opencode-session`. Ba family theo model (map trong `FAMILY` của opencode.js):
+- `/chat/completions` — GLM/Kimi/DeepSeek/MiMo/LongCat… (`tool_choice:"required"`,
+  deepseek cần `thinking:{type:"disabled"}`)
+- `/messages` — MiniMax/Qwen3.x (`tool_choice:{type:"auto"}`; forced bị 400)
+- `/responses` — Grok/GPT-Luna/Muse Spark (`tool_choice:"auto"`; named bị 400)
+
+Output ép qua tool `submit_translation(paragraphs[], title_vi)` → structured
+JSON, validate count (reject >2×input hoặc <50%). `GET /models` = danh sách live.
+
+**Worker**: `--dir --key=<card> --workers=3` (3 luồng). Chunk ~2400 chữ Hán/
+call. Ghi `vi/<n>.json` + `vi/_index.json` incremental → đọc ngay khi xong từng
+chương; `translate.json` = job heartbeat. `MOCK_TRANSLATE=1` = test offline.
+
+**Reader**: `chapter/N?lang=vi` + `index?lang=vi` (fallback bản gốc nếu chưa
+dịch); nút `VI/中` trên topbar khi `meta.lib==="cn"`.
+
+**Benchmark ch3/ch1170** (thực tế): deepseek-v4-flash **14-15s** nhanh nhất,
+tên Hán-Việt đúng → default. muse-spark-1.3 ~28-31s, deepseek-v4.1 ~46-96s,
+glm-5.3-flash ~70s (tên sai Uyển), qwen3.8-flash ~85s, space-bunny ~52s,
+hy4/longcat >130s. Kém phù hợp: mimo-v2.6-flash (rác output), glm-5.1 & kimi-k3
+(không tool_call).
+
+**Danh pháp (glossary)**: mỗi truyện CN có `vi/_glossary.json` — AI tự điền tên
+riêng (nhân vật/địa danh/tổ chức/vật phẩm) qua `names[]` trong tool call;
+worker inject lại `known_names` vào các chương sau để danh pháp nhất quán.
+Sửa tay của user lưu riêng ở `vi/_glossary.edits.json` (server là writer duy
+nhất — tránh race với worker), overlay thắng AI, `null` = tombstone xóa.
+API: `GET/POST/DELETE /api/book/<id>/glossary(?zh=)`. UI: nút 📖 Tên trên card
+truyện CN → modal lọc/sửa/thêm/xóa (tên sửa tay tô đậm).

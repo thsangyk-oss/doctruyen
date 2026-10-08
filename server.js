@@ -7,6 +7,10 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
+const oc = require("./opencode");
+const ol = require("./ollama");
+// translate provider dispatch — key cards carry .provider (default opencode)
+const provOf = (card) => (card && card.provider === "ollama" ? ol : oc);
 
 const ROOT = __dirname;
 const PORT = 1345;
@@ -87,6 +91,9 @@ function chapterIndex(dir) {
 // this server only spawns/queues workers, one at a time
 const jobRunning = new Map(); // id -> ChildProcess
 const jobQueue = [];          // [{id, base}]
+const trRunning = new Map();  // id -> translate.js ChildProcess (independent
+                              // of the scrape queue — translation hits an LLM
+                              // API, not the novel sites)
 
 function readJob(id) {
   try {
@@ -98,6 +105,55 @@ function writeJob(id, j) {
     fs.writeFileSync(path.join(BOOKS_DIR, id, "job.json"), JSON.stringify(j), "utf8");
   } catch {}
 }
+function readTJob(id) {
+  try {
+    const j = JSON.parse(
+      fs.readFileSync(path.join(BOOKS_DIR, id, "translate.json"), "utf8"));
+    return j && j.status !== "done" ? j : (j ? { status: "done", done: j.done, total: j.total } : null);
+  } catch { return null; }
+}
+function writeTJob(id, j) {
+  try {
+    fs.writeFileSync(path.join(BOOKS_DIR, id, "translate.json"), JSON.stringify(j), "utf8");
+  } catch {}
+}
+function viCount(dir) {
+  try {
+    return Object.keys(JSON.parse(
+      fs.readFileSync(path.join(dir, "vi", "_index.json"), "utf8"))).length;
+  } catch { return 0; }
+}
+// merged glossary size (AI terms + user edits, minus tombstones) — shown on
+// the 📖 button so the glossary's growth is visible from the library
+function glCount(dir) {
+  try {
+    const vdir = path.join(dir, "vi");
+    const g = JSON.parse(fs.readFileSync(path.join(vdir, "_glossary.json"), "utf8"));
+    try {
+      const e = JSON.parse(fs.readFileSync(path.join(vdir, "_glossary.edits.json"), "utf8"));
+      for (const zh in e) { if (e[zh] === null) delete g[zh]; else g[zh] = e[zh]; }
+    } catch {}
+    return Object.keys(g).length;
+  } catch { return 0; }
+}
+// translate worker spawn — separate from the serial scrape queue
+function startTranslate(id, keyName) {
+  if (trRunning.has(id)) return false;
+  let outFd;
+  try { outFd = fs.openSync(path.join(BOOKS_DIR, id, "translate.out"), "a"); } catch {}
+  const args = [path.join(ROOT, "translate.js"),
+    "--dir=" + path.join(BOOKS_DIR, id)];
+  if (keyName) args.push("--key=" + keyName);
+  const proc = spawn(process.execPath, args,
+    outFd ? { stdio: ["ignore", outFd, outFd] } : { stdio: "ignore" });
+  proc.on("exit", () => { try { outFd && fs.closeSync(outFd); } catch {} });
+  trRunning.set(id, proc);
+  proc.on("exit", () => trRunning.delete(id));
+  return true;
+}
+// single-chapter retranslates are fire-and-wait workers (translate.js --only)
+// tracked per id:num so double clicks don't stack calls to the same chapter
+const trChap = new Set();
 function readMeta(id) {
   try {
     return JSON.parse(fs.readFileSync(path.join(BOOKS_DIR, id, "meta.json"), "utf8"));
@@ -110,14 +166,43 @@ function runQueue() {
   // capture worker stdout/stderr — a silently-dying worker is undebuggable
   let outFd;
   try { outFd = fs.openSync(path.join(BOOKS_DIR, j.id, "worker.out"), "a"); } catch {}
-  const proc = spawn(process.execPath, [
-    path.join(ROOT, "scrape-book.js"),
-    "--dir=" + path.join(BOOKS_DIR, j.id),
-    "--base=" + j.base,
-  ], outFd ? { stdio: ["ignore", outFd, outFd] } : { stdio: "ignore" });
+  // CN-original books (lib:"cn") use the plain-fetch JieQi worker — handles
+  // akshu88 + hongye via meta.site; no browser/proxies needed for either
+  const meta = readMeta(j.id);
+  const script = j.script || (meta.lib === "cn" ? "scrape-akshu.js" : "scrape-book.js");
+  const args = [path.join(ROOT, script), "--dir=" + path.join(BOOKS_DIR, j.id)];
+  if (j.args) args.push(...j.args.split(" ")); else args.push("--base=" + j.base);
+  // lane count is user-tunable (data/crawl-config.json) — applies to the
+  // parallel-proxy crawlers; the sequential CN worker ignores it
+  const cfg = readCrawlCfg();
+  if (script === "scrape-book.js") args.push("--parallel=" + cfg.parallel);
+  else if (script === "scrape-webtruyendich.js") args.push("--parallel=" + cfg.wtParallel);
+  const proc = spawn(process.execPath, args,
+    outFd ? { stdio: ["ignore", outFd, outFd] } : { stdio: "ignore" });
   proc.on("exit", () => { try { outFd && fs.closeSync(outFd); } catch {} });
   jobRunning.set(j.id, proc);
-  proc.on("exit", () => { jobRunning.delete(j.id); runQueue(); });
+  proc.on("exit", () => {
+    jobRunning.delete(j.id);
+    // books whose main source ran dry can declare a supplement crawler in
+    // meta.json ("supplement": {script, args}) — chain it after the main run
+    if (!j.script && meta.supplement && meta.supplement.script)
+      jobQueue.push({ id: j.id, script: meta.supplement.script,
+        args: meta.supplement.args || "" });
+    runQueue();
+  });
+}
+// crawler tuning preset — what the benched-optimal config resets to
+const CRAWL_PRESET = { parallel: 10, wtParallel: 6 };
+const CRAWL_CFG_FILE = path.join(ROOT, "data", "crawl-config.json");
+function readCrawlCfg() {
+  try {
+    const c = JSON.parse(fs.readFileSync(CRAWL_CFG_FILE, "utf8"));
+    return { parallel: c.parallel || CRAWL_PRESET.parallel,
+             wtParallel: c.wtParallel || CRAWL_PRESET.wtParallel };
+  } catch { return { ...CRAWL_PRESET }; }
+}
+function writeCrawlCfg(c) {
+  try { fs.writeFileSync(CRAWL_CFG_FILE, JSON.stringify(c), "utf8"); } catch {}
 }
 let proxyRefreshRunning = false;
 function maybeRefreshProxies() {
@@ -136,7 +221,8 @@ function maybeRefreshProxies() {
   proc.on("exit", () => { proxyRefreshRunning = false; });
 }
 function enqueueJob(id, base) {
-  maybeRefreshProxies();
+  // CN workers fetch without proxies — adding a CN book shouldn't kick off a scan
+  if (readMeta(id).lib !== "cn") maybeRefreshProxies();
   jobQueue.push({ id, base });
   runQueue();
 }
@@ -157,6 +243,23 @@ setInterval(() => {
   }
 }, 60000).unref();
 
+// translate watchdog: respawn translate.js workers whose heartbeat went
+// stale — covers externally-killed procs (gone from trRunning) and hung
+// ones (in trRunning but not heartbeating). Worker heartbeats every 30s.
+setInterval(() => {
+  try {
+    for (const id of fs.readdirSync(BOOKS_DIR)) {
+      const j = readTJob(id);
+      if (!j || j.status !== "running") continue;
+      if (Date.now() - (j.updated || 0) < 5 * 60 * 1000) continue;
+      const proc = trRunning.get(id);
+      if (proc) { try { proc.kill(); } catch {} trRunning.delete(id); }
+      writeTJob(id, Object.assign({}, j, { status: "queued" }));
+      startTranslate(id, j.keyName);
+    }
+  } catch {}
+}, 60000).unref();
+
 // library listing: every book folder + its meta + reading progress + job
 function listBooks() {
   const out = [];
@@ -168,15 +271,21 @@ function listBooks() {
       const ix = chapterIndex(dir);
       const st = readState(id);
       const job = readJob(id);
+      const isCn = meta.lib === "cn";
       out.push({
         id,
         title: meta.title || id,
+        titleVi: meta.titleVi || "",
         subtitle: meta.subtitle || "",
+        lib: isCn ? "cn" : "main",
         total: ix.length,
         chapter: st.chapter || 0,
         para: st.para || 0,
         updated: st.updated || 0,
         hasSource: !!meta.base,
+        vi: isCn ? viCount(dir) : 0,
+        gl: isCn ? glCount(dir) : 0,
+        tjob: isCn ? readTJob(id) : null,
         cover: !!meta.cover || fs.existsSync(path.join(dir, "cover.jpg"))
           || fs.existsSync(path.join(dir, "cover.png"))
           || fs.existsSync(path.join(dir, "cover.webp")),
@@ -223,7 +332,7 @@ if(r.ok){location.href='/'+location.search+location.hash;location.reload();}else
 };
 </script></body></html>`;
 
-const requestHandler = (req, res) => {
+const requestHandler = async (req, res) => {
     let urlPath = decodeURIComponent(req.url.split("?")[0]);
 
     // force HTTPS on the public domain — wakeLock/secure-context APIs
@@ -268,6 +377,109 @@ const requestHandler = (req, res) => {
       return;
     }
 
+    // ---- AI translate config (OpenCode Go) ----
+    if (urlPath === "/api/translate" && req.method === "GET") {
+      const c = oc.loadConf();
+      send(res, 200, JSON.stringify({
+        active: c.active,
+        keys: c.keys.map((k) => ({
+          name: k.name, model: k.model, key: oc.maskKey(k.key),
+          provider: k.provider || "opencode",
+          models: k.models || [],
+        })),
+      }), { "Content-Type": "application/json; charset=utf-8" });
+      return;
+    }
+    if (urlPath === "/api/translate/keys" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", async () => {
+        try {
+          const d = JSON.parse(body);
+          const key = String(d.key || "").trim();
+          const provider = String(d.provider || "opencode").toLowerCase();
+          if (!key) { send(res, 400, JSON.stringify({ error: "Thiếu API key" }), { "Content-Type": "application/json; charset=utf-8" }); return; }
+          const conf = oc.loadConf();
+          if (conf.keys.some((k) => k.key === key)) {
+            send(res, 200, JSON.stringify({ exists: true }), { "Content-Type": "application/json; charset=utf-8" });
+            return;
+          }
+          // validate + discover models live — a bad key fails here, not mid-job
+          const api = provider === "ollama" ? ol : oc;
+          let models;
+          try { models = await api.fetchModels(key); }
+          catch (e) {
+            send(res, 400, JSON.stringify({ error: "Key không hợp lệ (" + (e.message || "lỗi mạng") + ")" }), { "Content-Type": "application/json; charset=utf-8" });
+            return;
+          }
+          const name = "api" + (conf.keys.length + 1);
+          // default model: deepseek-v4-flash benched fastest on opencode
+          // (≈15s/chương, correct Hán-Việt names); gemma4:31b is the best
+          // free-plan model on ollama cloud (proper Hán-Việt + tool calls)
+          const pref = provider === "ollama"
+            ? ["gemma4:31b", "gpt-oss:120b", "gpt-oss:20b", "nemotron-3-nano:30b"]
+            : ["deepseek-v4-flash", "glm-5.3-flash", "glm-5.2",
+              "deepseek-v4.1-flash", "muse-spark-1.3-contributor"];
+          const def = pref.map((id) => models.find((m) => m.id === id))
+            .find(Boolean) || models[0] || {};
+          conf.keys.push({ name, key, provider, model: def.id || "", models });
+          if (!conf.active) conf.active = name;
+          oc.saveConf(conf);
+          send(res, 201, JSON.stringify({ name, model: def.id || "", models }), {
+            "Content-Type": "application/json; charset=utf-8" });
+        } catch (e) {
+          send(res, 400, JSON.stringify({ error: String(e && e.message || e) }), { "Content-Type": "application/json; charset=utf-8" });
+        }
+      });
+      return;
+    }
+    const tm = urlPath.match(/^\/api\/translate\/keys\/([a-z0-9_-]+)$/i);
+    if (tm) {
+      const conf = oc.loadConf();
+      const card = conf.keys.find((k) => k.name === tm[1]);
+      if (!card) { send(res, 404, "{}"); return; }
+      if (req.method === "PATCH") {
+        let body = "";
+        req.on("data", (c) => (body += c));
+        req.on("end", () => {
+          try {
+            const d = JSON.parse(body);
+            if (d.model !== undefined) card.model = String(d.model);
+            if (d.active) conf.active = card.name;
+            oc.saveConf(conf);
+            send(res, 200, "{}", { "Content-Type": "application/json" });
+          } catch { send(res, 400, "{}"); }
+        });
+        return;
+      }
+      if (req.method === "DELETE") {
+        conf.keys = conf.keys.filter((k) => k.name !== card.name);
+        if (conf.active === card.name) conf.active = conf.keys[0] ? conf.keys[0].name : null;
+        oc.saveConf(conf);
+        send(res, 200, "{}", { "Content-Type": "application/json" });
+        return;
+      }
+    }
+    if (urlPath === "/api/translate/models" && req.method === "GET") {
+      const name = (req.url.match(/[?&]card=([a-z0-9_-]+)/i) || [])[1];
+      const conf = oc.loadConf();
+      const card = conf.keys.find((k) => k.name === name);
+      if (!card) { send(res, 404, "{}"); return; }
+      // serve cached list if we have one; refresh live on demand (?live=1)
+      if (card.models && card.models.length && !/[?&]live=1/.test(req.url)) {
+        send(res, 200, JSON.stringify(card.models), { "Content-Type": "application/json; charset=utf-8" });
+        return;
+      }
+      try {
+        const models = await provOf(card).fetchModels(card.key);
+        card.models = models; oc.saveConf(conf);
+        send(res, 200, JSON.stringify(models), { "Content-Type": "application/json; charset=utf-8" });
+      } catch (e) {
+        send(res, 502, JSON.stringify({ error: String(e && e.message || e) }), { "Content-Type": "application/json; charset=utf-8" });
+      }
+      return;
+    }
+
     // ---- library + per-book APIs ----
     if (urlPath === "/api/books") {
       if (req.method === "GET") {
@@ -278,12 +490,51 @@ const requestHandler = (req, res) => {
       }
       if (req.method === "POST") {
         // {url: "https://truyendich.space/doc-truyen/<slug>[/chuong-N]"}
+        //    or "https://m.akshu88.com/book/<id>.html" (CN original -> lib "cn")
+        //    or "https://www.hongyebookzhai.com/shuzhai/<id>/" (CN -> lib "cn")
         let body = "";
         req.on("data", (c) => (body += c));
         req.on("end", () => {
           try {
             const d = JSON.parse(body);
-            const m = String(d.url || "").match(
+            const url = String(d.url || "");
+            // CN-original sources — same worker, different site profile:
+            //   akshu88.com/book/<id>.html       -> site "akshu88", id cn-<bid>
+            //   hongyebookzhai.com/shuzhai/<id>/ -> site "hongye",  id cn-hy-<bid>
+            const cnSrc = url.match(/akshu88\.com\/book\/(\d+)/i) ? { site: "akshu88" }
+              : url.match(/hongyebookzhai\.com\/shuzhai\/(\d+)/i) ? { site: "hongye" }
+              : null;
+            if (cnSrc) {
+              const bid = RegExp.$1;
+              const site = cnSrc.site;
+              const base = site === "hongye"
+                ? `https://www.hongyebookzhai.com/shuzhai/${bid}/`
+                : `https://m.akshu88.com/book/${bid}.html`;
+              const id = (site === "hongye" ? "cn-hy-" + bid : "cn-" + bid).slice(0, 60);
+              for (const b of listBooks()) {
+                const bm = readMeta(b.id);
+                if (b.id === id || (bm.bookId === bid && (bm.site || "akshu88") === site)) {
+                  send(res, 200, JSON.stringify({ book: b, exists: true }), { "Content-Type": "application/json; charset=utf-8" });
+                  return;
+                }
+              }
+              const dir = path.join(BOOKS_DIR, id);
+              fs.mkdirSync(path.join(dir, "chapters"), { recursive: true });
+              fs.writeFileSync(path.join(dir, "meta.json"), JSON.stringify({
+                title: "Truyện gốc " + bid,
+                lib: "cn",
+                site,
+                bookId: bid,
+                source: base,
+                base,
+              }, null, 2), "utf8");
+              writeJob(id, { status: "queued", done: 0, total: 0, fail: 0, updated: Date.now() });
+              enqueueJob(id, base);
+              const book = listBooks().find((b) => b.id === id);
+              send(res, 201, JSON.stringify({ book }), { "Content-Type": "application/json; charset=utf-8" });
+              return;
+            }
+            const m = url.match(
               /truyendich\.space\/doc-truyen\/([a-z0-9-]+)/i
             );
             if (!m) { send(res, 400, JSON.stringify({ error: "Link không hợp lệ" }), { "Content-Type": "application/json; charset=utf-8" }); return; }
@@ -317,18 +568,306 @@ const requestHandler = (req, res) => {
       }
     }
 
+    // ---- crawler control panel ----
+    if (urlPath === "/api/crawl" && req.method === "GET") {
+      const jobs = [];
+      try {
+        for (const id of fs.readdirSync(BOOKS_DIR)) {
+          const j = readJob(id);
+          if (!j || (j.status !== "running" && j.status !== "queued")) continue;
+          jobs.push({
+            id,
+            title: readMeta(id).title || id,
+            status: j.status, done: j.done || 0, total: j.total || 0,
+            fail: j.fail || 0, note: j.note || null,
+            stats: j.stats || null,
+            age: Math.round((Date.now() - (j.updated || 0)) / 1000),
+            proc: jobRunning.has(id),
+            queued: jobQueue.some((q) => q.id === id),
+          });
+        }
+      } catch {}
+      // proxy pool health
+      let poolCount = 0, poolNewest = 0;
+      try {
+        for (const f of fs.readdirSync(ROOT).filter((f) => /^proxy_alive(?!_wt).*\.txt$/.test(f))) {
+          poolCount += fs.readFileSync(path.join(ROOT, f), "utf8")
+            .split(/\r?\n/).filter((s) => s.trim()).length;
+          poolNewest = Math.max(poolNewest, fs.statSync(path.join(ROOT, f)).mtimeMs);
+        }
+      } catch {}
+      let wtPool = 0;
+      try {
+        wtPool = fs.readFileSync(path.join(ROOT, "proxy_alive_wt.txt"), "utf8")
+          .split(/\r?\n/).filter((s) => s.trim()).length;
+      } catch {}
+      let checker = null;
+      try {
+        checker = JSON.parse(fs.readFileSync(
+          path.join(ROOT, "proxy-check.status.json"), "utf8"));
+        checker.spawned = proxyRefreshRunning;
+      } catch {}
+      send(res, 200, JSON.stringify({
+        jobs, pool: { alive: poolCount, wtAlive: wtPool, checkedAt: poolNewest },
+        checker, refreshing: proxyRefreshRunning,
+        config: readCrawlCfg(), preset: CRAWL_PRESET,
+      }), { "Content-Type": "application/json; charset=utf-8" });
+      return;
+    }
+    if (urlPath === "/api/crawl/proxies" && req.method === "POST") {
+      // manual pool refresh: re-validate existing pool (drops dead proxies)
+      // then top up from fresh public lists — same code path as auto-refresh
+      if (!proxyRefreshRunning) {
+        proxyRefreshRunning = true;
+        const proc = spawn(process.execPath,
+          [path.join(ROOT, "proxy-check.js"), "15000"], { stdio: "ignore" });
+        proc.on("exit", () => { proxyRefreshRunning = false; });
+      }
+      send(res, 202, "{}", { "Content-Type": "application/json" });
+      return;
+    }
+    if (urlPath === "/api/crawl/config" && req.method === "POST") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        try {
+          const d = JSON.parse(body);
+          const cfg = readCrawlCfg();
+          const clamp = (v) => Math.max(1, Math.min(30, Math.round(+v || 0)));
+          if (d.parallel !== undefined) cfg.parallel = clamp(d.parallel);
+          if (d.wtParallel !== undefined) cfg.wtParallel = clamp(d.wtParallel);
+          writeCrawlCfg(cfg);
+          send(res, 200, JSON.stringify(cfg),
+            { "Content-Type": "application/json; charset=utf-8" });
+        } catch { send(res, 400, "{}"); }
+      });
+      return;
+    }
+    if (urlPath === "/api/crawl/config/reset" && req.method === "POST") {
+      writeCrawlCfg({ ...CRAWL_PRESET });
+      send(res, 200, JSON.stringify(CRAWL_PRESET),
+        { "Content-Type": "application/json; charset=utf-8" });
+      return;
+    }
+
     const bm = urlPath.match(/^\/api\/book\/([a-z0-9][a-z0-9_-]{0,63})(?:\/(.*))?$/i);
     if (bm) {
       const id = bm[1], sub = bm[2] || "";
       const dir = bookDir(id);
       if (!dir) { send(res, 404, "{}"); return; }
 
+      // delete the whole book — kill its scrape/translate workers first so
+      // nothing writes into the directory mid-delete
+      if (!sub && req.method === "DELETE") {
+        const qi = jobQueue.findIndex((j) => j.id === id);
+        if (qi >= 0) jobQueue.splice(qi, 1);
+        const sp = jobRunning.get(id);
+        if (sp) { try { sp.kill(); } catch {} jobRunning.delete(id); runQueue(); }
+        const tp = trRunning.get(id);
+        if (tp) { try { tp.kill(); } catch {} trRunning.delete(id); }
+        for (const k of trChap) if (k.startsWith(id + ":")) trChap.delete(k);
+        try {
+          fs.rmSync(dir, { recursive: true, force: true });
+        } catch (e) {
+          send(res, 500, JSON.stringify({ error: String(e && e.message || e) }),
+            { "Content-Type": "application/json; charset=utf-8" });
+          return;
+        }
+        send(res, 200, "{}", { "Content-Type": "application/json" });
+        return;
+      }
+
       if (sub === "index" && req.method === "GET") {
-        send(res, 200, JSON.stringify(chapterIndex(dir)), {
+        let ix = chapterIndex(dir);
+        // ?lang=vi -> swap in translated titles where they exist
+        if (/[?&]lang=vi/.test(req.url)) {
+          try {
+            const vi = JSON.parse(fs.readFileSync(
+              path.join(dir, "vi", "_index.json"), "utf8"));
+            ix = ix.map((c) => vi[c.num]
+              ? { num: c.num, title: vi[c.num], vi: true } : c);
+          } catch {}
+        }
+        send(res, 200, JSON.stringify(ix), {
           "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "no-cache",
         });
         return;
+      }
+
+      // per-book name glossary — AI terms live in vi/_glossary.json (written
+      // only by the translate worker); user corrections live in
+      // vi/_glossary.edits.json (written only here, read by the worker).
+      // Separate writers = no lock needed; edits overlay wins, null=tombstone.
+      if (sub === "glossary") {
+        const vdir = path.join(dir, "vi");
+        const gfile = path.join(vdir, "_glossary.json");
+        const efile = path.join(vdir, "_glossary.edits.json");
+        const readJson = (f) => {
+          try { return JSON.parse(fs.readFileSync(f, "utf8")); }
+          catch { return {}; }
+        };
+        const writeJson = (f, o) => {
+          fs.writeFileSync(f + ".tmp", JSON.stringify(o));
+          fs.renameSync(f + ".tmp", f);
+        };
+        const merged = () => {
+          const g = readJson(gfile), e = readJson(efile);
+          for (const zh in e) {
+            if (e[zh] === null) { delete g[zh]; continue; }
+            const prev = g[zh] || {};
+            g[zh] = { vi: e[zh].vi, kind: e[zh].kind || prev.kind || "other",
+              n: Math.max(prev.n || 0, 1), ch: prev.ch || 0, manual: true };
+          }
+          return g;
+        };
+        if (req.method === "GET") {
+          send(res, 200, JSON.stringify(merged()), {
+            "Content-Type": "application/json; charset=utf-8" });
+          return;
+        }
+        if (req.method === "POST" || req.method === "PUT") {
+          let body = "";
+          req.on("data", (c) => (body += c));
+          req.on("end", () => {
+            let b = {};
+            try { b = JSON.parse(body); } catch {}
+            const zh = String(b.zh || "").trim();
+            const vi = String(b.vi || "").trim();
+            if (!zh || !vi || zh.length > 60 || vi.length > 120) {
+              send(res, 400, JSON.stringify({ error: "bad term" }),
+                { "Content-Type": "application/json; charset=utf-8" });
+              return;
+            }
+            try {
+              const e = readJson(efile);
+              e[zh] = { vi, kind: b.kind || "other" };
+              fs.mkdirSync(vdir, { recursive: true });
+              writeJson(efile, e);
+            } catch {}
+            send(res, 200, JSON.stringify({ ok: true }),
+              { "Content-Type": "application/json; charset=utf-8" });
+          });
+          return;
+        }
+        if (req.method === "DELETE") {
+          const zh = decodeURIComponent(
+            (req.url.match(/[?&]zh=([^&]+)/) || [])[1] || "").trim();
+          if (zh) {
+            try {
+              const e = readJson(efile);
+              e[zh] = null; // tombstone — hides the AI term too
+              fs.mkdirSync(vdir, { recursive: true });
+              writeJson(efile, e);
+            } catch {}
+          }
+          send(res, 200, JSON.stringify({ ok: true }),
+            { "Content-Type": "application/json; charset=utf-8" });
+          return;
+        }
+        send(res, 405, "Method not allowed");
+        return;
+      }
+
+      // re-translate ONE chapter (reader settings button) — may run alongside
+      // the main job; worker merges glossary instead of owning the job file
+      if (sub === "translate-chapter" && req.method === "POST") {
+        let body = "";
+        req.on("data", (c) => (body += c));
+        req.on("end", () => {
+          let b = {};
+          try { b = JSON.parse(body); } catch {}
+          const num = +b.num;
+          if (!num || !fs.existsSync(path.join(dir, "chapters", num + ".json"))) {
+            send(res, 404, JSON.stringify({ error: "Không có chương " + b.num }),
+              { "Content-Type": "application/json; charset=utf-8" });
+            return;
+          }
+          const conf = oc.loadConf();
+          const card = (b.key && conf.keys.find((k) => k.name === b.key)) ||
+            conf.keys.find((k) => k.name === conf.active) || conf.keys[0];
+          if (!card) {
+            send(res, 400, JSON.stringify({ error: "Chưa thêm API key" }),
+              { "Content-Type": "application/json; charset=utf-8" });
+            return;
+          }
+          const tk = id + ":" + num;
+          if (trChap.has(tk)) {
+            send(res, 409, JSON.stringify({ error: "Chương này đang dịch" }),
+              { "Content-Type": "application/json; charset=utf-8" });
+            return;
+          }
+          trChap.add(tk);
+          const args = [path.join(ROOT, "translate.js"),
+            "--dir=" + dir, "--key=" + card.name, "--only=" + num,
+            "--workers=1"];
+          if (b.model) args.push("--model=" + String(b.model));
+          const proc = spawn(process.execPath, args, { stdio: "ignore" });
+          const killer = setTimeout(() => { try { proc.kill(); } catch {} }, 300000);
+          proc.on("exit", () => {
+            clearTimeout(killer); trChap.delete(tk);
+            try {
+              const d = JSON.parse(fs.readFileSync(
+                path.join(dir, "vi", num + ".json"), "utf8"));
+              if (d.paras && d.paras.length) {
+                send(res, 200, JSON.stringify({
+                  ok: true, paras: d.paras.length, title: d.title,
+                  model: b.model || card.model,
+                }), { "Content-Type": "application/json; charset=utf-8" });
+                return;
+              }
+            } catch {}
+            send(res, 500, JSON.stringify({ error: "Dịch thất bại — xem translate.log" }),
+              { "Content-Type": "application/json; charset=utf-8" });
+          });
+        });
+        return;
+      }
+
+      // ---- AI translate job (OpenCode Go) ----
+      if (sub === "translate") {
+        if (req.method === "GET") {
+          send(res, 200, JSON.stringify(readTJob(id) || {}), {
+            "Content-Type": "application/json; charset=utf-8" });
+          return;
+        }
+        if (req.method === "POST") {
+          let body = "";
+          req.on("data", (c) => (body += c));
+          req.on("end", () => {
+            let keyName;
+            try { keyName = JSON.parse(body).key; } catch {}
+            const conf = oc.loadConf();
+            const card = keyName
+              ? conf.keys.find((k) => k.name === keyName)
+              : conf.keys.find((k) => k.name === conf.active) || conf.keys[0];
+            if (!card) {
+              send(res, 400, JSON.stringify({ error: "Chưa thêm API key — mở AI Translate để thêm" }),
+                { "Content-Type": "application/json; charset=utf-8" });
+              return;
+            }
+            if (trRunning.has(id)) {
+              send(res, 409, JSON.stringify({ error: "Đang dịch rồi" }),
+                { "Content-Type": "application/json; charset=utf-8" });
+              return;
+            }
+            writeTJob(id, { status: "queued", done: 0, total: 0, fail: 0,
+              model: card.model, keyName: card.name, updated: Date.now() });
+            startTranslate(id, card.name);
+            send(res, 200, JSON.stringify(readTJob(id)),
+              { "Content-Type": "application/json; charset=utf-8" });
+          });
+          return;
+        }
+        if (req.method === "DELETE") {
+          const proc = trRunning.get(id);
+          if (proc) { try { proc.kill(); } catch {} trRunning.delete(id); }
+          const j = readTJob(id) || {};
+          j.status = "cancelled"; j.updated = Date.now();
+          writeTJob(id, j);
+          send(res, 200, JSON.stringify(j), { "Content-Type": "application/json" });
+          return;
+        }
       }
 
       // (re)start/resume a scrape — worker skips chapters already on disk
@@ -379,7 +918,12 @@ const requestHandler = (req, res) => {
 
       const cm = sub.match(/^chapter\/(\d+)$/);
       if (cm && req.method === "GET") {
-        const f = path.join(dir, "chapters", cm[1] + ".json");
+        // ?lang=vi -> translated copy if this chapter has been translated
+        let f = path.join(dir, "chapters", cm[1] + ".json");
+        if (/[?&]lang=vi/.test(req.url)) {
+          const vf = path.join(dir, "vi", cm[1] + ".json");
+          if (fs.existsSync(vf)) f = vf;
+        }
         fs.readFile(f, (err, buf) => {
           if (err) { res.writeHead(404).end("Not found"); return; }
           res.writeHead(200, {
@@ -458,10 +1002,9 @@ const requestHandler = (req, res) => {
       return;
     }
 
-    // ---- TTS proxies (VieNeu @ :8001, OmniVoice @ :8002) ----
+    // ---- TTS proxy (VieNeu @ :8001) ----
     const ttsEngines = {
       "/api/tts": "http://localhost:8001",
-      "/api/omni": "http://localhost:8002",
     };
     for (const [prefix, upstream] of Object.entries(ttsEngines)) {
       if (urlPath === prefix + "/voices" && req.method === "GET") {

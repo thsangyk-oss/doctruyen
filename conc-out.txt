@@ -1,0 +1,3 @@
+pool: 16 chunks ~1200 chars each, model=deepseek-v4-flash
+L= 4  ok=4/4  429=0  other=0  wall=14.5s  med=13.5s  max=14.5s  ~16.6 chunks/min
+L= 6  ok=6/6  429=0  other=0  wall=13.5s  med=12.6s  max=13.5s  ~26.7 chunks/min

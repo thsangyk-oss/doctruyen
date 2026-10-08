@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Truyện">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="stylesheet" href="/style.css?v=3">
+<link rel="stylesheet" href="/style.css?v=13">
 </head>
 <body data-theme="sepia">
 
@@ -25,12 +25,33 @@
   <button id="btn-lib" class="icon-btn" title="Thư viện">📚</button>
   <button id="btn-wake" class="icon-btn" title="Giữ màn hình sáng">☾</button>
   <button id="btn-tts" class="icon-btn" title="Nghe truyện">🔊</button>
+  <button id="btn-lang" class="icon-btn hidden" title="Đổi ngôn ngữ VI/中">VI</button>
   <button id="btn-theme" class="icon-btn" title="Đổi giao diện">◐</button>
   <button id="btn-settings" class="icon-btn" title="Cài đặt">Aa</button>
 </header>
 
 <div id="library">
+  <div id="crawl-panel">
+    <div id="crawl-head">
+      <span>Trạng thái crawler</span>
+      <span id="crawl-pool"></span>
+      <button id="btn-proxies" title="Kiểm tra lại pool — loại proxy chết và nạp thêm IP mới">↻ Kiếm thêm proxy</button>
+      <span id="crawl-cfg">
+        Lane <input id="cfg-parallel" type="number" min="1" max="30">
+        · WT <input id="cfg-wtparallel" type="number" min="1" max="30">
+        <button id="btn-cfg-save" title="Áp dụng cho job tiếp theo">Lưu</button>
+        <button id="btn-cfg-reset" title="Preset tối ưu (10/6)">Reset</button>
+      </span>
+    </div>
+    <div id="crawl-jobs"></div>
+    <div id="crawl-checker" class="hidden"></div>
+  </div>
   <div id="lib-grid"></div>
+  <div id="lib-sep-cn" class="lib-sep">
+    <span class="sep-ic">▸</span> Truyện gốc Trung <span id="cn-count" class="sep-count"></span>
+    <button id="btn-ai" class="sep-ai" title="Cài đặt AI dịch">⚙ AI Translate</button>
+  </div>
+  <div id="cn-grid" class="hidden"></div>
 </div>
 
 <div id="layout">
@@ -115,6 +136,13 @@
       <button data-width="wide">Rộng</button>
     </div>
   </div>
+  <div class="set-row" id="set-cn" hidden>
+    <label>Dịch lại chương <b id="set-cn-num"></b></label>
+    <div class="set-ctl set-cn-ctl">
+      <select id="ch-tr-model" title="Model dùng riêng cho chương này"></select>
+      <button id="ch-tr-btn" title="Dịch lại chương này — vẫn theo danh pháp đã có">🌐 Dịch lại</button>
+    </div>
+  </div>
 </div>
 
 <div id="tts-bar">
@@ -127,6 +155,53 @@
   <button id="tts-close" class="tts-btn" title="Đóng">✕</button>
 </div>
 
+<div id="tr-modal" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span>AI Translate</span>
+      <button id="tr-close" class="icon-btn">✕</button>
+    </div>
+    <div id="tr-cards"></div>
+    <div class="tr-add">
+      <select id="tr-prov">
+        <option value="opencode">OpenCode Go</option>
+        <option value="ollama">Ollama Cloud</option>
+      </select>
+      <input id="tr-key" type="password" placeholder="Dán API key…" autocomplete="off">
+      <button id="tr-add">Thêm</button>
+    </div>
+    <div class="tr-hint">Mỗi key một card, chọn model dịch riêng. Card được tick dùng cho nút 🌐 Dịch trên truyện.</div>
+  </div>
+</div>
+
+<div id="gl-modal" class="modal hidden">
+  <div class="modal-box gl-box">
+    <div class="modal-head">
+      <span id="gl-title">📖 Danh pháp</span>
+      <input id="gl-q" placeholder="Lọc tên…" autocomplete="off">
+      <button id="gl-close" class="icon-btn">✕</button>
+    </div>
+    <div id="gl-list"></div>
+    <div class="tr-add">
+      <input id="gl-zh" placeholder="Tên gốc 中文" autocomplete="off">
+      <input id="gl-vi" placeholder="Tên tiếng Việt" autocomplete="off">
+      <button id="gl-add">＋</button>
+    </div>
+    <div class="tr-hint">AI tự điền tên khi dịch. Sửa ô tiếng Việt → Enter để lưu — tên sửa tay luôn được giữ, áp dụng cho chương dịch từ đây trở đi.</div>
+  </div>
+</div>
+
+<div id="del-modal" class="modal hidden">
+  <div class="modal-box del-box">
+    <div class="modal-head"><span>🗑 Xóa truyện?</span></div>
+    <p id="del-text" class="del-text"></p>
+    <div class="del-btns">
+      <button id="del-no">Hủy</button>
+      <button id="del-yes" class="danger">Xóa vĩnh viễn</button>
+    </div>
+  </div>
+</div>
+
 <div id="resume-wrap">
   <button id="stay-btn" title="Đặt vị trí đang xem làm tiến độ mới">Ở lại</button>
   <button id="resume-pill" title="Quay về chương đang đọc">▶ Đọc tiếp chương <b id="resume-num"></b></button>
@@ -135,7 +210,7 @@
 <div id="page-ind"></div>
 <div id="toast"></div>
 
-<script src="/app.js?v=4"></script>
+<script src="/app.js?v=16"></script>
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
