@@ -2,64 +2,115 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Thư viện truyện</title>
 <link rel="icon" href="/icon-192.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#f5f1e8">
+<meta name="theme-color" content="#f3ead6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Truyện">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<link rel="stylesheet" href="/style.css?v=13">
+<link rel="preload" href="/fonts/literata-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css?v=15">
 </head>
 <body data-theme="sepia">
+
+<!-- icon sprite: stroke icons inherit currentColor + .ic stroke settings -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
+  <symbol id="i-coffee" viewBox="0 0 24 24"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="7" y1="2" x2="7" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="13" y1="2" x2="13" y2="4"/></symbol>
+  <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><polyline points="4 7 4 4 15 4 15 7"/><line x1="9.5" y1="4" x2="9.5" y2="20"/><line x1="7" y1="20" x2="12" y2="20"/><polyline points="14 13 14 11 21 11 21 13"/><line x1="17.5" y1="11" x2="17.5" y2="20"/><line x1="16" y1="20" x2="19" y2="20"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.2" y2="16.2"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.2-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1.2" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1.2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-skip-back" viewBox="0 0 24 24"><path d="M18 5.5v13a1 1 0 0 1-1.55.83L7.5 13.2a1.4 1.4 0 0 1 0-2.4l8.95-6.13A1 1 0 0 1 18 5.5z" fill="currentColor" stroke="none"/><line x1="5" y1="5" x2="5" y2="19"/></symbol>
+  <symbol id="i-skip-fwd" viewBox="0 0 24 24"><path d="M6 5.5v13a1 1 0 0 0 1.55.83l8.95-6.13a1.4 1.4 0 0 0 0-2.4L7.55 4.67A1 1 0 0 0 6 5.5z" fill="currentColor" stroke="none"/><line x1="19" y1="5" x2="19" y2="19"/></symbol>
+  <symbol id="i-chev-up" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+  <symbol id="i-chevs-left" viewBox="0 0 24 24"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></symbol>
+  <symbol id="i-chevs-right" viewBox="0 0 24 24"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></symbol>
+</svg>
 
 <div id="progress-bar"></div>
 
 <header id="topbar">
-  <button id="btn-menu" class="icon-btn" title="Mục lục">☰</button>
-  <div id="novel-title">Thư viện</div>
+  <button id="btn-lib" class="icon-btn reader-only" title="Về thư viện" aria-label="Về thư viện"><svg class="ic"><use href="#i-back"/></svg></button>
+  <button id="btn-menu" class="icon-btn reader-only" title="Mục lục" aria-label="Mục lục"><svg class="ic"><use href="#i-list"/></svg></button>
+  <div id="title-box">
+    <div id="novel-title">Thư viện</div>
+    <div id="chap-sub"></div>
+  </div>
   <div class="spacer"></div>
-  <button id="btn-lib" class="icon-btn" title="Thư viện">📚</button>
-  <button id="btn-wake" class="icon-btn" title="Giữ màn hình sáng">☾</button>
-  <button id="btn-tts" class="icon-btn" title="Nghe truyện">🔊</button>
-  <button id="btn-lang" class="icon-btn hidden" title="Đổi ngôn ngữ VI/中">VI</button>
-  <button id="btn-theme" class="icon-btn" title="Đổi giao diện">◐</button>
-  <button id="btn-settings" class="icon-btn" title="Cài đặt">Aa</button>
+  <button id="btn-add" class="icon-btn lib-only" title="Thêm truyện" aria-label="Thêm truyện"><svg class="ic"><use href="#i-plus"/></svg></button>
+  <button id="btn-crawl" class="icon-btn lib-only" title="Trạng thái crawler" aria-label="Trạng thái crawler"><svg class="ic"><use href="#i-activity"/></svg><span class="act-dot"></span></button>
+  <button id="btn-lang" class="lang-btn hidden" title="Đổi ngôn ngữ VI/中">VI</button>
+  <button id="btn-tts" class="icon-btn reader-only" title="Nghe truyện" aria-label="Nghe truyện"><svg class="ic"><use href="#i-headphones"/></svg></button>
+  <button id="btn-wake" class="icon-btn reader-only" title="Giữ màn hình sáng" aria-label="Giữ màn hình sáng"><svg class="ic"><use href="#i-coffee"/></svg></button>
+  <button id="btn-theme" class="icon-btn" title="Đổi giao diện sáng/sepia/tối" aria-label="Đổi giao diện"><svg class="ic"><use href="#i-contrast"/></svg></button>
+  <button id="btn-settings" class="icon-btn reader-only" title="Cài đặt chữ" aria-label="Cài đặt chữ"><svg class="ic"><use href="#i-type"/></svg></button>
 </header>
 
 <div id="library">
-  <div id="crawl-panel">
-    <div id="crawl-head">
-      <span>Trạng thái crawler</span>
-      <span id="crawl-pool"></span>
-      <button id="btn-proxies" title="Kiểm tra lại pool — loại proxy chết và nạp thêm IP mới">↻ Kiếm thêm proxy</button>
-      <span id="crawl-cfg">
-        Lane <input id="cfg-parallel" type="number" min="1" max="30">
-        · WT <input id="cfg-wtparallel" type="number" min="1" max="30">
-        <button id="btn-cfg-save" title="Áp dụng cho job tiếp theo">Lưu</button>
-        <button id="btn-cfg-reset" title="Preset tối ưu (10/6)">Reset</button>
-      </span>
-    </div>
-    <div id="crawl-jobs"></div>
-    <div id="crawl-checker" class="hidden"></div>
+  <div class="lib-wrap">
+    <section id="lib-hero" hidden></section>
+
+    <section class="shelf">
+      <div class="shelf-head">
+        <h2>Kệ sách</h2>
+        <span id="main-count" class="shelf-count"></span>
+        <label class="shelf-search">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input id="lib-q" type="search" placeholder="Tìm truyện…" autocomplete="off">
+        </label>
+      </div>
+      <div id="lib-grid" class="cover-grid"></div>
+    </section>
+
+    <section class="shelf" id="cn-shelf">
+      <div id="lib-sep-cn" class="shelf-head toggle">
+        <svg class="ic sep-ic"><use href="#i-chev-right"/></svg>
+        <h2>Truyện gốc Trung</h2>
+        <span id="cn-count" class="shelf-count"></span>
+        <button id="btn-ai" class="chip-btn" title="Cài đặt AI dịch"><svg class="ic"><use href="#i-globe"/></svg>AI dịch</button>
+      </div>
+      <div id="cn-grid" class="cover-grid hidden"></div>
+    </section>
   </div>
-  <div id="lib-grid"></div>
-  <div id="lib-sep-cn" class="lib-sep">
-    <span class="sep-ic">▸</span> Truyện gốc Trung <span id="cn-count" class="sep-count"></span>
-    <button id="btn-ai" class="sep-ai" title="Cài đặt AI dịch">⚙ AI Translate</button>
-  </div>
-  <div id="cn-grid" class="hidden"></div>
 </div>
 
 <div id="layout">
   <aside id="sidebar">
     <div id="sidebar-head">
-      <input id="search" type="search" placeholder="Tìm chương… (vd: 26)" autocomplete="off">
+      <div id="sb-book"></div>
+      <label class="sb-search">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input id="search" type="search" placeholder="Tìm tên hoặc số chương" autocomplete="off">
+      </label>
       <div id="jump-row">
-        <input id="jump" type="number" min="1" placeholder="Chương số…">
+        <input id="jump" type="number" min="1" placeholder="Nhảy tới chương…">
         <button id="btn-jump">Đi</button>
       </div>
     </div>
@@ -71,95 +122,204 @@
     <div id="content-wrap">
       <div id="chap-meta"></div>
       <h1 id="chap-title"></h1>
+      <div id="chap-info"></div>
       <div id="chap-body"></div>
       <div id="nav-bottom">
-        <button id="prev-b" class="nav-btn">← Chương trước</button>
-        <button id="toc-b" class="nav-btn">Mục lục</button>
-        <button id="next-b" class="nav-btn">Chương sau →</button>
+        <button id="prev-b" class="nav-btn prev">
+          <span class="nb-dir"><svg class="ic"><use href="#i-arrow-left"/></svg>Chương trước</span>
+          <span class="nb-t" id="prev-t"></span>
+        </button>
+        <button id="next-b" class="nav-btn next">
+          <span class="nb-dir">Chương sau<svg class="ic"><use href="#i-arrow-right"/></svg></span>
+          <span class="nb-t" id="next-t"></span>
+        </button>
+        <button id="toc-b" class="nav-toc"><svg class="ic"><use href="#i-list"/></svg>Mục lục</button>
       </div>
     </div>
   </main>
 </div>
 
 <div id="settings-panel">
+  <div class="sheet-grab"></div>
+  <div class="set-title">Hiển thị</div>
+  <div class="set-row set-theme">
+    <div class="set-ctl themes" id="theme-seg">
+      <button data-theme-val="light"><i class="sw sw-light"></i>Sáng</button>
+      <button data-theme-val="sepia"><i class="sw sw-sepia"></i>Sepia</button>
+      <button data-theme-val="dark"><i class="sw sw-dark"></i>Tối</button>
+    </div>
+  </div>
   <div class="set-row">
     <label>Cỡ chữ</label>
-    <div class="set-ctl">
-      <button data-fs="-1">A−</button>
+    <div class="set-ctl stepper">
+      <button data-fs="-1" aria-label="Nhỏ hơn"><span class="a-sm">A</span></button>
       <span id="fs-val"></span>
-      <button data-fs="1">A+</button>
+      <button data-fs="1" aria-label="Lớn hơn"><span class="a-lg">A</span></button>
     </div>
   </div>
   <div class="set-row">
     <label>Giãn dòng</label>
-    <div class="set-ctl">
-      <button data-lh="-1">−</button>
+    <div class="set-ctl stepper">
+      <button data-lh="-1" aria-label="Hẹp hơn">−</button>
       <span id="lh-val"></span>
-      <button data-lh="1">+</button>
+      <button data-lh="1" aria-label="Rộng hơn">+</button>
     </div>
   </div>
-  <div class="set-row">
+  <div class="set-row col">
     <label>Phông chữ</label>
     <div class="set-ctl seg" id="font-seg">
-      <button data-font="serif">Serif</button>
-      <button data-font="sans">Sans</button>
-      <button data-font="f25">F25</button>
+      <button data-font="serif" class="ff-serif">Literata</button>
+      <button data-font="sans" class="ff-sans">Sans</button>
+      <button data-font="f25" class="ff-f25">F25</button>
     </div>
   </div>
-  <div class="set-row">
-    <label>Giao diện</label>
-    <div class="set-ctl seg" id="theme-seg">
-      <button data-theme-val="light">Sáng</button>
-      <button data-theme-val="sepia">Sepia</button>
-      <button data-theme-val="dark">Tối</button>
-    </div>
-  </div>
-  <div class="set-row">
-    <label>Kiểu đọc</label>
-    <div class="set-ctl seg" id="layout-seg">
-      <button data-layout="scroll">Cuộn</button>
-      <button data-layout="book">Sách</button>
-    </div>
-  </div>
-  <div class="set-row">
-    <label>Hiệu ứng lật</label>
-    <div class="set-ctl seg" id="flip-seg">
-      <button data-flip="on">Bật</button>
-      <button data-flip="off">Tắt</button>
-    </div>
-  </div>
-  <div class="set-row">
-    <label>Độ rộng</label>
+  <div class="set-row col">
+    <label>Độ rộng trang</label>
     <div class="set-ctl seg" id="width-seg">
       <button data-width="narrow">Hẹp</button>
       <button data-width="normal">Vừa</button>
       <button data-width="wide">Rộng</button>
     </div>
   </div>
-  <div class="set-row" id="set-cn" hidden>
+  <div class="set-row col">
+    <label>Kiểu đọc</label>
+    <div class="set-ctl seg" id="layout-seg">
+      <button data-layout="scroll">Cuộn dọc</button>
+      <button data-layout="book">Lật trang</button>
+    </div>
+  </div>
+  <div class="set-row col" id="flip-row">
+    <label>Hiệu ứng lật</label>
+    <div class="set-ctl seg" id="flip-seg">
+      <button data-flip="on">Bật</button>
+      <button data-flip="off">Tắt</button>
+    </div>
+  </div>
+  <div class="set-row col" id="set-cn" hidden>
     <label>Dịch lại chương <b id="set-cn-num"></b></label>
     <div class="set-ctl set-cn-ctl">
       <select id="ch-tr-model" title="Model dùng riêng cho chương này"></select>
-      <button id="ch-tr-btn" title="Dịch lại chương này — vẫn theo danh pháp đã có">🌐 Dịch lại</button>
+      <button id="ch-tr-btn" title="Dịch lại chương này — vẫn theo danh pháp đã có">Dịch lại chương này</button>
     </div>
   </div>
 </div>
 
-<div id="tts-bar">
-  <button id="tts-play" class="tts-btn" title="Phát / Tạm dừng">▶</button>
-  <button id="tts-prev" class="tts-btn" title="Đoạn trước">⏮</button>
-  <button id="tts-next" class="tts-btn" title="Đoạn sau">⏭</button>
-  <select id="tts-voice" title="Giọng đọc"></select>
-  <button id="tts-speed" class="tts-btn" title="Tốc độ">1x</button>
-  <span id="tts-status"></span>
-  <button id="tts-close" class="tts-btn" title="Đóng">✕</button>
+<!-- TTS: compact mini player + full control sheet -->
+<div id="tts-mini">
+  <div class="tm-prog"><i id="tm-bar"></i></div>
+  <button id="tts-play" class="tm-play" title="Phát / Tạm dừng" aria-label="Phát"><svg class="ic"><use href="#i-play"/></svg></button>
+  <div id="tm-info" class="tm-info" title="Mở bảng điều khiển">
+    <div id="tm-title"></div>
+    <div id="tts-status"></div>
+  </div>
+  <button id="tts-next" class="icon-btn" title="Đoạn sau" aria-label="Đoạn sau"><svg class="ic"><use href="#i-skip-fwd"/></svg></button>
+  <button id="tm-expand" class="icon-btn" title="Mở bảng điều khiển" aria-label="Mở bảng điều khiển"><svg class="ic"><use href="#i-chev-up"/></svg></button>
 </div>
+
+<div id="tts-sheet" class="hidden">
+  <div class="ts-box">
+    <div class="sheet-grab"></div>
+    <div class="ts-head">
+      <div class="ts-art"><svg class="ic"><use href="#i-headphones"/></svg></div>
+      <div class="ts-meta">
+        <div class="ts-eyebrow">Đang nghe</div>
+        <div id="ts-chap"></div>
+        <div id="ts-book"></div>
+      </div>
+      <button id="ts-collapse" class="icon-btn" title="Thu nhỏ" aria-label="Thu nhỏ"><svg class="ic"><use href="#i-chev-down"/></svg></button>
+    </div>
+    <div class="ts-seek">
+      <input type="range" id="ts-seek" min="0" max="0" value="0" aria-label="Vị trí đoạn">
+      <div class="ts-seek-lbl"><span id="ts-pos">Đoạn 1</span><span id="ts-left"></span></div>
+    </div>
+    <div class="ts-ctl">
+      <button id="ts-prevch" class="icon-btn" title="Chương trước" aria-label="Chương trước"><svg class="ic"><use href="#i-chevs-left"/></svg></button>
+      <button id="tts-prev" class="icon-btn" title="Đoạn trước" aria-label="Đoạn trước"><svg class="ic"><use href="#i-skip-back"/></svg></button>
+      <button id="ts-play" class="ts-play" title="Phát / Tạm dừng" aria-label="Phát"><svg class="ic"><use href="#i-play"/></svg></button>
+      <button id="ts-next" class="icon-btn" title="Đoạn sau" aria-label="Đoạn sau"><svg class="ic"><use href="#i-skip-fwd"/></svg></button>
+      <button id="ts-nextch" class="icon-btn" title="Chương sau" aria-label="Chương sau"><svg class="ic"><use href="#i-chevs-right"/></svg></button>
+    </div>
+    <div id="ts-status" class="ts-status"></div>
+    <div class="ts-row">
+      <label>Giọng đọc</label>
+      <select id="tts-voice" title="Giọng đọc"></select>
+    </div>
+    <div class="ts-row">
+      <label>Tốc độ</label>
+      <div class="seg" id="ts-speed">
+        <button data-speed="0.75">0.75×</button>
+        <button data-speed="1">1×</button>
+        <button data-speed="1.25">1.25×</button>
+        <button data-speed="1.5">1.5×</button>
+        <button data-speed="2">2×</button>
+      </div>
+    </div>
+    <div class="ts-row">
+      <label>Hẹn giờ tắt <span id="ts-sleep-left"></span></label>
+      <div class="seg" id="ts-sleep">
+        <button data-sleep="0">Tắt</button>
+        <button data-sleep="15">15p</button>
+        <button data-sleep="30">30p</button>
+        <button data-sleep="60">60p</button>
+        <button data-sleep="ch">Hết chương</button>
+      </div>
+    </div>
+    <button id="tts-close" class="ts-off"><svg class="ic"><use href="#i-x"/></svg>Tắt trình đọc</button>
+  </div>
+</div>
+
+<!-- crawler status drawer -->
+<div id="crawl-drawer" class="drawer hidden">
+  <div id="crawl-panel" class="drawer-box">
+    <div class="sheet-grab"></div>
+    <div class="drawer-head">
+      <span>Trạng thái crawler</span>
+      <button id="crawl-close" class="icon-btn" aria-label="Đóng"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="cw-stats">
+      <div class="cw-stat"><b id="cw-alive">–</b><span>proxy sống</span></div>
+      <div class="cw-stat"><b id="cw-wt">–</b><span>webtruyendich</span></div>
+      <div class="cw-stat"><b id="cw-age">–</b><span>kiểm tra lần cuối</span></div>
+    </div>
+    <span id="crawl-pool" hidden></span>
+    <button id="btn-proxies" class="btn-wide" title="Kiểm tra lại pool — loại proxy chết và nạp thêm IP mới"><svg class="ic"><use href="#i-refresh"/></svg>Kiếm thêm proxy</button>
+    <div id="crawl-checker" class="hidden"></div>
+    <div class="cw-sec">Job đang chạy</div>
+    <div id="crawl-jobs"></div>
+    <div class="cw-sec">Số lane song song</div>
+    <div id="crawl-cfg">
+      <label>truyendich <input id="cfg-parallel" type="number" min="1" max="30"></label>
+      <label>webtruyendich <input id="cfg-wtparallel" type="number" min="1" max="30"></label>
+      <div class="cfg-btns">
+        <button id="btn-cfg-reset" title="Preset tối ưu (10/6)">Reset</button>
+        <button id="btn-cfg-save" class="primary" title="Áp dụng cho job tiếp theo">Lưu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="add-modal" class="modal hidden">
+  <div class="modal-box add-box">
+    <div class="modal-head">
+      <span>Thêm truyện</span>
+      <button id="add-close" class="icon-btn" aria-label="Đóng"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <p class="add-help">Dán link trang truyện — hỗ trợ <b>truyendich.space</b>, <b>m.akshu88.com</b>, <b>hongyebookzhai.com</b>. Chương sẽ được tải nền.</p>
+    <div class="add-form">
+      <input id="add-url" placeholder="https://…" autocomplete="off" inputmode="url">
+      <button id="add-go">Tải về</button>
+    </div>
+  </div>
+</div>
+
+<div id="bk-menu" class="menu hidden"></div>
+<div id="menu-scrim" class="hidden"></div>
 
 <div id="tr-modal" class="modal hidden">
   <div class="modal-box">
     <div class="modal-head">
-      <span>AI Translate</span>
-      <button id="tr-close" class="icon-btn">✕</button>
+      <span>AI dịch</span>
+      <button id="tr-close" class="icon-btn" aria-label="Đóng"><svg class="ic"><use href="#i-x"/></svg></button>
     </div>
     <div id="tr-cards"></div>
     <div class="tr-add">
@@ -170,16 +330,16 @@
       <input id="tr-key" type="password" placeholder="Dán API key…" autocomplete="off">
       <button id="tr-add">Thêm</button>
     </div>
-    <div class="tr-hint">Mỗi key một card, chọn model dịch riêng. Card được tick dùng cho nút 🌐 Dịch trên truyện.</div>
+    <div class="tr-hint">Mỗi key một card, chọn model dịch riêng. Card được chọn dùng cho nút Dịch trên truyện.</div>
   </div>
 </div>
 
 <div id="gl-modal" class="modal hidden">
   <div class="modal-box gl-box">
     <div class="modal-head">
-      <span id="gl-title">📖 Danh pháp</span>
+      <span id="gl-title">Danh pháp</span>
       <input id="gl-q" placeholder="Lọc tên…" autocomplete="off">
-      <button id="gl-close" class="icon-btn">✕</button>
+      <button id="gl-close" class="icon-btn" aria-label="Đóng"><svg class="ic"><use href="#i-x"/></svg></button>
     </div>
     <div id="gl-list"></div>
     <div class="tr-add">
@@ -193,7 +353,7 @@
 
 <div id="del-modal" class="modal hidden">
   <div class="modal-box del-box">
-    <div class="modal-head"><span>🗑 Xóa truyện?</span></div>
+    <div class="modal-head"><span>Xóa truyện?</span></div>
     <p id="del-text" class="del-text"></p>
     <div class="del-btns">
       <button id="del-no">Hủy</button>
@@ -203,14 +363,14 @@
 </div>
 
 <div id="resume-wrap">
-  <button id="stay-btn" title="Đặt vị trí đang xem làm tiến độ mới">Ở lại</button>
-  <button id="resume-pill" title="Quay về chương đang đọc">▶ Đọc tiếp chương <b id="resume-num"></b></button>
+  <button id="stay-btn" title="Đặt vị trí đang xem làm tiến độ mới">Ở lại đây</button>
+  <button id="resume-pill" title="Quay về chương đang đọc"><svg class="ic"><use href="#i-bookmark"/></svg>Đọc tiếp chương <b id="resume-num"></b></button>
 </div>
 
 <div id="page-ind"></div>
 <div id="toast"></div>
 
-<script src="/app.js?v=16"></script>
+<script src="/app.js?v=17"></script>
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {

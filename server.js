@@ -606,6 +606,10 @@ const requestHandler = async (req, res) => {
         checker = JSON.parse(fs.readFileSync(
           path.join(ROOT, "proxy-check.status.json"), "utf8"));
         checker.spawned = proxyRefreshRunning;
+        // a checker killed mid-scan (server restart) leaves running:true
+        // behind — the live one rewrites the file every few seconds
+        if (checker.running && !proxyRefreshRunning &&
+            Date.now() - (checker.updated || 0) > 3 * 60 * 1000) checker.running = false;
       } catch {}
       send(res, 200, JSON.stringify({
         jobs, pool: { alive: poolCount, wtAlive: wtPool, checkedAt: poolNewest },

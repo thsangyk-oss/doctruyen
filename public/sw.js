@@ -1,12 +1,14 @@
 // Đọc Truyện service worker — just enough for PWA installability.
 // Cache-first for own static assets; network for everything else
 // (API/chapter data must always be live for progress sync).
-const CACHE = "doctruyen-v14";
+const CACHE = "doctruyen-v16";
 const STATIC = [
   "/",
   "/index.html",
-  "/app.js?v=16",
-  "/style.css?v=13",
+  "/app.js?v=17",
+  "/style.css?v=15",
+  "/fonts/literata-latin.woff2",
+  "/fonts/literata-vietnamese.woff2",
   "/manifest.webmanifest",
   "/icon-192.png",
   "/icon-512.png",
@@ -36,7 +38,7 @@ self.addEventListener("fetch", (e) => {
       (hit) =>
         hit ||
         fetch(e.request).then((r) => {
-          if (r.ok && /(\.js|\.css|\.png|\.otf|\.webmanifest|\/$|index\.html)/.test(u.pathname + u.search)) {
+          if (r.ok && /(\.js|\.css|\.png|\.otf|\.woff2|\.ttf|\.webmanifest|\/$|index\.html)/.test(u.pathname + u.search)) {
             const cp = r.clone();
             caches.open(CACHE).then((c) => c.put(e.request, cp));
           }
