@@ -1,0 +1,585 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Chọn giọng Sidon</title><style>
+body{font-family:system-ui;background:#101418;color:#ddd;margin:0;padding:16px;max-width:1100px;margin:auto}
+h1{font-size:20px}p{color:#999;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.card{background:#1a2129;border:1px solid #2a3440;border-radius:10px;padding:12px}
+.top{display:flex;gap:8px;align-items:baseline;margin-bottom:6px}
+.g{font-size:11px;padding:2px 8px;border-radius:8px}.g.m{background:#1e3a5f;color:#7db3f0}.g.f{background:#4a2440;color:#e896d0}
+.f0{color:#888;font-size:11px}audio{width:100%;height:34px;margin:4px 0}
+.txt{font-size:12px;color:#8a9;min-height:28px}
+.row2{display:flex;gap:8px;margin-top:6px}
+input{flex:1;background:#0d1117;border:1px solid #333;border-radius:6px;color:#ddd;padding:6px 8px;font-size:13px}
+button{background:#2563eb;color:#fff;border:0;border-radius:6px;padding:6px 14px;cursor:pointer}
+button:disabled{background:#333;color:#777}
+.st{font-size:12px;margin-top:4px;color:#7c8}.st.err{color:#e77}
+</style>
+<h1>Kho giọng Sidon — 78 giọng</h1>
+<p>Nguồn: dataset Kontact/vieneu_sidon_noise_removal · nghe rồi bấm <b>+ Thêm</b> để enroll (đổi tên được). Giọng mới xuất hiện ngay trong app, không cần restart.</p>
+<div class=grid><div class="card" id="c1">
+ <div class="top"><b>Sidon M00</b><span class="g m">nam</span>
+ <span class="f0">159Hz · 4.7s</span></div>
+ <audio controls preload="none" src="clips/row71.wav"></audio>
+ <div class="txt">Bọn anh đều sợ điều đó, dẫu rằng anh ấy rất sung sướng với cuộc hôn nhân của anh.…</div>
+ <div class="row2"><input value="Sidon M00" id="n1" maxlength="40">
+ <button onclick="enroll(1,'row71.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s1"></div></div><div class="card" id="c72">
+ <div class="top"><b>Sidon M01</b><span class="g m">nam</span>
+ <span class="f0">156Hz · 3.1s</span></div>
+ <audio controls preload="none" src="clips/row52091.wav"></audio>
+ <div class="txt">Isaiah Berlin đã nhận định về tác phẩm này như sau.…</div>
+ <div class="row2"><input value="Sidon M01" id="n72" maxlength="40">
+ <button onclick="enroll(72,'row52091.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s72"></div></div><div class="card" id="c22">
+ <div class="top"><b>Sidon M02</b><span class="g m">nam</span>
+ <span class="f0">154Hz · 6.4s · x3</span></div>
+ <audio controls preload="none" src="clips/row14146.wav"></audio>
+ <div class="txt">Nanozyme có kích thước nhỏ, diện tích bề mặt lớn và hoạt tính ổn định giúp cải thiện hiệu suất xúc tác và tiết…</div>
+ <div class="row2"><input value="Sidon M02" id="n22" maxlength="40">
+ <button onclick="enroll(22,'row14146.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s22"></div></div><div class="card" id="c29">
+ <div class="top"><b>Sidon M03</b><span class="g m">nam</span>
+ <span class="f0">153Hz · 8.6s</span></div>
+ <audio controls preload="none" src="clips/row11884.wav"></audio>
+ <div class="txt">Thần muốn rằng, hoặc cuốn sách không đáng nhận được vinh dự nào, hoặc chân lý của vấn đề và sức nặng của đề tà…</div>
+ <div class="row2"><input value="Sidon M03" id="n29" maxlength="40">
+ <button onclick="enroll(29,'row11884.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s29"></div></div><div class="card" id="c50">
+ <div class="top"><b>Sidon M04</b><span class="g m">nam</span>
+ <span class="f0">151Hz · 6.8s · x2</span></div>
+ <audio controls preload="none" src="clips/row27359.wav"></audio>
+ <div class="txt">Ali với tôi trộn xi măng với cát và nước trong xe rùa, rồi dùng một dụng cụ bằng gỗ, nom tựa nửa cái phễu.…</div>
+ <div class="row2"><input value="Sidon M04" id="n50" maxlength="40">
+ <button onclick="enroll(50,'row27359.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s50"></div></div><div class="card" id="c62">
+ <div class="top"><b>Sidon M05</b><span class="g m">nam</span>
+ <span class="f0">148Hz · 4.6s</span></div>
+ <audio controls preload="none" src="clips/row41324.wav"></audio>
+ <div class="txt">Rất có thể vì hầu hết nạn nhân của voi thường sống ở những nơi cách xa trung tâm truyền thông thế giới.…</div>
+ <div class="row2"><input value="Sidon M05" id="n62" maxlength="40">
+ <button onclick="enroll(62,'row41324.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s62"></div></div><div class="card" id="c16">
+ <div class="top"><b>Sidon M06</b><span class="g m">nam</span>
+ <span class="f0">145Hz · 3.6s</span></div>
+ <audio controls preload="none" src="clips/row6858.wav"></audio>
+ <div class="txt">Nhiều bằng chứng cho thấy nền tảng đạo đức bắt nguồn từ năng lực xúc cảm.…</div>
+ <div class="row2"><input value="Sidon M06" id="n16" maxlength="40">
+ <button onclick="enroll(16,'row6858.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s16"></div></div><div class="card" id="c46">
+ <div class="top"><b>Sidon M07</b><span class="g m">nam</span>
+ <span class="f0">142Hz · 4.6s</span></div>
+ <audio controls preload="none" src="clips/row24877.wav"></audio>
+ <div class="txt">Sự đỏng đảnh này của bà chúa chuyên chế buộc đại úy phải cuốn cuồng, ăn vận cho tươm tất.…</div>
+ <div class="row2"><input value="Sidon M07" id="n46" maxlength="40">
+ <button onclick="enroll(46,'row24877.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s46"></div></div><div class="card" id="c43">
+ <div class="top"><b>Sidon M08</b><span class="g m">nam</span>
+ <span class="f0">140Hz · 6.0s · x2</span></div>
+ <audio controls preload="none" src="clips/row24203.wav"></audio>
+ <div class="txt">Một tuần sau, ông đưa cho mỗi người một hồ sơ riêng mô tả tính cách dựa trên kết quả của họ.…</div>
+ <div class="row2"><input value="Sidon M08" id="n43" maxlength="40">
+ <button onclick="enroll(43,'row24203.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s43"></div></div><div class="card" id="c19">
+ <div class="top"><b>Sidon M09</b><span class="g m">nam</span>
+ <span class="f0">136Hz · 5.5s</span></div>
+ <audio controls preload="none" src="clips/row8279.wav"></audio>
+ <div class="txt">Mới đầu ông ấy tưởng tôi nói đùa, nhưng tôi đáp lại bằng thái độ rất cương quyết.…</div>
+ <div class="row2"><input value="Sidon M09" id="n19" maxlength="40">
+ <button onclick="enroll(19,'row8279.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s19"></div></div><div class="card" id="c45">
+ <div class="top"><b>Sidon M10</b><span class="g m">nam</span>
+ <span class="f0">135Hz · 4.6s</span></div>
+ <audio controls preload="none" src="clips/row24692.wav"></audio>
+ <div class="txt">Tào Công rằng, đánh lúc họ trễ nải, ra chỗ họ trống trải.…</div>
+ <div class="row2"><input value="Sidon M10" id="n45" maxlength="40">
+ <button onclick="enroll(45,'row24692.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s45"></div></div><div class="card" id="c5">
+ <div class="top"><b>Sidon M11</b><span class="g m">nam</span>
+ <span class="f0">134Hz · 5.4s · x2</span></div>
+ <audio controls preload="none" src="clips/row1966.wav"></audio>
+ <div class="txt">Khi mọi học sinh, sinh viên FPT được phép dùng AI trong học tập, thì giảng viên phải thay đổi cách giao bài.…</div>
+ <div class="row2"><input value="Sidon M11" id="n5" maxlength="40">
+ <button onclick="enroll(5,'row1966.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s5"></div></div><div class="card" id="c20">
+ <div class="top"><b>Sidon M12</b><span class="g m">nam</span>
+ <span class="f0">134Hz · 8.6s</span></div>
+ <audio controls preload="none" src="clips/row8759.wav"></audio>
+ <div class="txt">Và mặc dù là đất nước nhỏ bé cả về diện tích và dân số, Israel và câu chuyện của quốc gia này vẫn luôn là tâm …</div>
+ <div class="row2"><input value="Sidon M12" id="n20" maxlength="40">
+ <button onclick="enroll(20,'row8759.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s20"></div></div><div class="card" id="c59">
+ <div class="top"><b>Sidon M13</b><span class="g m">nam</span>
+ <span class="f0">134Hz · 6.0s</span></div>
+ <audio controls preload="none" src="clips/row38839.wav"></audio>
+ <div class="txt">Ông nổi tiếng với vai trò là một ngôi sao võ thuật và là người trường phái võ thuật Chun Kuk Do.…</div>
+ <div class="row2"><input value="Sidon M13" id="n59" maxlength="40">
+ <button onclick="enroll(59,'row38839.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s59"></div></div><div class="card" id="c53">
+ <div class="top"><b>Sidon M14</b><span class="g m">nam</span>
+ <span class="f0">131Hz · 4.4s</span></div>
+ <audio controls preload="none" src="clips/row32294.wav"></audio>
+ <div class="txt">Điều đó khiến bất cứ trải nghiệm tuổi thơ bình thường nào cũng không thể xảy ra.…</div>
+ <div class="row2"><input value="Sidon M14" id="n53" maxlength="40">
+ <button onclick="enroll(53,'row32294.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s53"></div></div><div class="card" id="c9">
+ <div class="top"><b>Sidon M15</b><span class="g m">nam</span>
+ <span class="f0">129Hz · 12.2s · x5</span></div>
+ <audio controls preload="none" src="clips/row23288.wav"></audio>
+ <div class="txt">Xin nói thêm, điều tra số Digital Forensics, một nhánh của khoa học pháp y, bao gồm việc khôi phục và điều tra…</div>
+ <div class="row2"><input value="Sidon M15" id="n9" maxlength="40">
+ <button onclick="enroll(9,'row23288.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s9"></div></div><div class="card" id="c58">
+ <div class="top"><b>Sidon M16</b><span class="g m">nam</span>
+ <span class="f0">129Hz · 8.8s · x2</span></div>
+ <audio controls preload="none" src="clips/row39767.wav"></audio>
+ <div class="txt">Chúng ta nên từ bỏ một Sorat lịch sử.…</div>
+ <div class="row2"><input value="Sidon M16" id="n58" maxlength="40">
+ <button onclick="enroll(58,'row39767.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s58"></div></div><div class="card" id="c44">
+ <div class="top"><b>Sidon M17</b><span class="g m">nam</span>
+ <span class="f0">127Hz · 7.2s</span></div>
+ <audio controls preload="none" src="clips/row24550.wav"></audio>
+ <div class="txt">Như vậy, mạch máu của tim là hệ thống hậu cần quan trọng, đảm bảo tim hoạt động không ngừng nghỉ để duy trì sự…</div>
+ <div class="row2"><input value="Sidon M17" id="n44" maxlength="40">
+ <button onclick="enroll(44,'row24550.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s44"></div></div><div class="card" id="c75">
+ <div class="top"><b>Sidon M18</b><span class="g m">nam</span>
+ <span class="f0">127Hz · 4.9s</span></div>
+ <audio controls preload="none" src="clips/row55157.wav"></audio>
+ <div class="txt">Người viết kết luận, chúng tôi thấy rằng các doanh nhân lo sợ rủi ro hơn so với sâu đông.…</div>
+ <div class="row2"><input value="Sidon M18" id="n75" maxlength="40">
+ <button onclick="enroll(75,'row55157.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s75"></div></div><div class="card" id="c2">
+ <div class="top"><b>Sidon M19</b><span class="g m">nam</span>
+ <span class="f0">126Hz · 6.8s</span></div>
+ <audio controls preload="none" src="clips/row602.wav"></audio>
+ <div class="txt">Tuy nhiên, điện thoại thời đó có rất ít chức năng điện toán, màn hình thì quá nhỏ và không có khả năng tiếp nh…</div>
+ <div class="row2"><input value="Sidon M19" id="n2" maxlength="40">
+ <button onclick="enroll(2,'row602.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s2"></div></div><div class="card" id="c18">
+ <div class="top"><b>Sidon M20</b><span class="g m">nam</span>
+ <span class="f0">126Hz · 12.9s · x2</span></div>
+ <audio controls preload="none" src="clips/row13610.wav"></audio>
+ <div class="txt">Cho dù không có một ngày, cơ học lượng tử bị thay thế bởi một lý thuyết tất định toàn diện hơn, thì tính bất đ…</div>
+ <div class="row2"><input value="Sidon M20" id="n18" maxlength="40">
+ <button onclick="enroll(18,'row13610.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s18"></div></div><div class="card" id="c33">
+ <div class="top"><b>Sidon M21</b><span class="g m">nam</span>
+ <span class="f0">126Hz · 5.9s</span></div>
+ <audio controls preload="none" src="clips/row14129.wav"></audio>
+ <div class="txt">Súng trường của họ cũng ẩm ướt và dưới vạt áo choàng của họ là hai bao da đựng đạn đeo trước thắt lưng.…</div>
+ <div class="row2"><input value="Sidon M21" id="n33" maxlength="40">
+ <button onclick="enroll(33,'row14129.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s33"></div></div><div class="card" id="c70">
+ <div class="top"><b>Sidon M22</b><span class="g m">nam</span>
+ <span class="f0">126Hz · 6.4s</span></div>
+ <audio controls preload="none" src="clips/row50883.wav"></audio>
+ <div class="txt">Giờ đây, chúng ta đã hiểu cơ chế sinh học của fructose và mối quan hệ bí mật của nó với acid uric.…</div>
+ <div class="row2"><input value="Sidon M22" id="n70" maxlength="40">
+ <button onclick="enroll(70,'row50883.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s70"></div></div><div class="card" id="c8">
+ <div class="top"><b>Sidon M23</b><span class="g m">nam</span>
+ <span class="f0">124Hz · 2.9s</span></div>
+ <audio controls preload="none" src="clips/row2213.wav"></audio>
+ <div class="txt">Chỉ một tỷ lệ nhỏ những gì được nêu lên là đúng thực tế.…</div>
+ <div class="row2"><input value="Sidon M23" id="n8" maxlength="40">
+ <button onclick="enroll(8,'row2213.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s8"></div></div><div class="card" id="c25">
+ <div class="top"><b>Sidon M24</b><span class="g m">nam</span>
+ <span class="f0">123Hz · 6.0s</span></div>
+ <audio controls preload="none" src="clips/row10905.wav"></audio>
+ <div class="txt">Thần chú chính trị của người phương Tây chúng ta vào cuối thế kỷ 20 đã từng là hội nhập, chủ nghĩa đa văn hóa.…</div>
+ <div class="row2"><input value="Sidon M24" id="n25" maxlength="40">
+ <button onclick="enroll(25,'row10905.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s25"></div></div><div class="card" id="c32">
+ <div class="top"><b>Sidon M25</b><span class="g m">nam</span>
+ <span class="f0">122Hz · 6.3s · x2</span></div>
+ <audio controls preload="none" src="clips/row57741.wav"></audio>
+ <div class="txt">Những thứ này, cùng với hai cái ghế, là toàn bộ đồ đạc trong phòng, trừ một cái thảm vuông ở giữa.…</div>
+ <div class="row2"><input value="Sidon M25" id="n32" maxlength="40">
+ <button onclick="enroll(32,'row57741.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s32"></div></div><div class="card" id="c35">
+ <div class="top"><b>Sidon M26</b><span class="g m">nam</span>
+ <span class="f0">122Hz · 9.6s</span></div>
+ <audio controls preload="none" src="clips/row15270.wav"></audio>
+ <div class="txt">Mặc dù từ sụp đổ áp dụng cho đồng đô la nghe có vẻ hơi giống trong sách Khải Huyền, cuốn sách cuối cùng của Tâ…</div>
+ <div class="row2"><input value="Sidon M26" id="n35" maxlength="40">
+ <button onclick="enroll(35,'row15270.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s35"></div></div><div class="card" id="c41">
+ <div class="top"><b>Sidon M27</b><span class="g m">nam</span>
+ <span class="f0">122Hz · 6.7s · x3</span></div>
+ <audio controls preload="none" src="clips/row20771.wav"></audio>
+ <div class="txt">Maurice đã trở thành người truyền thông điệp đến cả thế giới, rằng môn cờ vua có thể xem như một phương tiện đ…</div>
+ <div class="row2"><input value="Sidon M27" id="n41" maxlength="40">
+ <button onclick="enroll(41,'row20771.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s41"></div></div><div class="card" id="c64">
+ <div class="top"><b>Sidon M28</b><span class="g m">nam</span>
+ <span class="f0">122Hz · 12.7s</span></div>
+ <audio controls preload="none" src="clips/row43116.wav"></audio>
+ <div class="txt">Hay chuyện sau khi chế độ thái ấp được thay thế bằng các quận, ông trở nên nghèo túng đến độ sau khi làm hết v…</div>
+ <div class="row2"><input value="Sidon M28" id="n64" maxlength="40">
+ <button onclick="enroll(64,'row43116.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s64"></div></div><div class="card" id="c77">
+ <div class="top"><b>Sidon M29</b><span class="g m">nam</span>
+ <span class="f0">122Hz · 3.2s</span></div>
+ <audio controls preload="none" src="clips/row59374.wav"></audio>
+ <div class="txt">có lẽ đó sẽ là cơ hội chuyển đổi số tiếp theo cho ngành giải trí gia đình.…</div>
+ <div class="row2"><input value="Sidon M29" id="n77" maxlength="40">
+ <button onclick="enroll(77,'row59374.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s77"></div></div><div class="card" id="c21">
+ <div class="top"><b>Sidon M30</b><span class="g m">nam</span>
+ <span class="f0">120Hz · 8.6s · x2</span></div>
+ <audio controls preload="none" src="clips/row9204.wav"></audio>
+ <div class="txt">Nước, ở dạng tinh khiết và đẹp đẽ nhất của mình, vươn mình bay lên trong không khí mát lành của buổi sáng giữa…</div>
+ <div class="row2"><input value="Sidon M30" id="n21" maxlength="40">
+ <button onclick="enroll(21,'row9204.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s21"></div></div><div class="card" id="c61">
+ <div class="top"><b>Sidon M31</b><span class="g m">nam</span>
+ <span class="f0">120Hz · 7.9s · x2</span></div>
+ <audio controls preload="none" src="clips/row53317.wav"></audio>
+ <div class="txt">Đó là lý do tại sao chúng ta không thể giải thích sự vượt trội của phương Tây qua việc xem xét thời kỳ tiền sử…</div>
+ <div class="row2"><input value="Sidon M31" id="n61" maxlength="40">
+ <button onclick="enroll(61,'row53317.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s61"></div></div><div class="card" id="c34">
+ <div class="top"><b>Sidon M32</b><span class="g m">nam</span>
+ <span class="f0">119Hz · 3.9s</span></div>
+ <audio controls preload="none" src="clips/row14293.wav"></audio>
+ <div class="txt">Lão ta đã láo sược, lẫn lộn tôi với một gã thám tử kém cỏi nhà nước.…</div>
+ <div class="row2"><input value="Sidon M32" id="n34" maxlength="40">
+ <button onclick="enroll(34,'row14293.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s34"></div></div><div class="card" id="c31">
+ <div class="top"><b>Sidon M33</b><span class="g m">nam</span>
+ <span class="f0">118Hz · 3.4s</span></div>
+ <audio controls preload="none" src="clips/row13150.wav"></audio>
+ <div class="txt">Buổi tối đến, tôi trở về nhà và vào phòng làm việc.…</div>
+ <div class="row2"><input value="Sidon M33" id="n31" maxlength="40">
+ <button onclick="enroll(31,'row13150.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s31"></div></div><div class="card" id="c30">
+ <div class="top"><b>Sidon M34</b><span class="g m">nam</span>
+ <span class="f0">117Hz · 8.0s · x3</span></div>
+ <audio controls preload="none" src="clips/row24993.wav"></audio>
+ <div class="txt">Vì thế, trong các trận thi đấu, tôi đã đứng ngoài sân, la hét và nhào lộn dọc theo rìa sân bóng rổ để khuấy độ…</div>
+ <div class="row2"><input value="Sidon M34" id="n30" maxlength="40">
+ <button onclick="enroll(30,'row24993.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s30"></div></div><div class="card" id="c47">
+ <div class="top"><b>Sidon M35</b><span class="g m">nam</span>
+ <span class="f0">112Hz · 3.0s</span></div>
+ <audio controls preload="none" src="clips/row24890.wav"></audio>
+ <div class="txt">Và ở phương Đông, người ta luôn biết tới điều này.…</div>
+ <div class="row2"><input value="Sidon M35" id="n47" maxlength="40">
+ <button onclick="enroll(47,'row24890.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s47"></div></div><div class="card" id="c13">
+ <div class="top"><b>Sidon M36</b><span class="g m">nam</span>
+ <span class="f0">110Hz · 4.0s</span></div>
+ <audio controls preload="none" src="clips/row5072.wav"></audio>
+ <div class="txt">Khi bị teo chết dần, các tế bào tạo ra bệnh ở các cơ quan.…</div>
+ <div class="row2"><input value="Sidon M36" id="n13" maxlength="40">
+ <button onclick="enroll(13,'row5072.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s13"></div></div><div class="card" id="c24">
+ <div class="top"><b>Sidon M37</b><span class="g m">nam</span>
+ <span class="f0">109Hz · 7.1s · x2</span></div>
+ <audio controls preload="none" src="clips/row35360.wav"></audio>
+ <div class="txt">Có lẽ, mọi người sẽ thấy thật buồn cười và cho rằng, nào, có gì đâu, quan trọng là kiếm tiền mà.…</div>
+ <div class="row2"><input value="Sidon M37" id="n24" maxlength="40">
+ <button onclick="enroll(24,'row35360.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s24"></div></div><div class="card" id="c11">
+ <div class="top"><b>Sidon M38</b><span class="g m">nam</span>
+ <span class="f0">107Hz · 7.4s</span></div>
+ <audio controls preload="none" src="clips/row3942.wav"></audio>
+ <div class="txt">Đó là lý do tại sao tôi gọi giai đoạn từ năm 2010 đến năm 2015 là quá trình tái thiết lập vĩ đại của tuổi thơ.…</div>
+ <div class="row2"><input value="Sidon M38" id="n11" maxlength="40">
+ <button onclick="enroll(11,'row3942.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s11"></div></div><div class="card" id="c26">
+ <div class="top"><b>Sidon M39</b><span class="g m">nam</span>
+ <span class="f0">107Hz · 9.6s · x3</span></div>
+ <audio controls preload="none" src="clips/row11139.wav"></audio>
+ <div class="txt">Khi đó, thái độ của James đối với Breslauer không mấy tốt đẹp, thường xuyên đánh tiếng rằng Breslauer không đư…</div>
+ <div class="row2"><input value="Sidon M39" id="n26" maxlength="40">
+ <button onclick="enroll(26,'row11139.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s26"></div></div><div class="card" id="c63">
+ <div class="top"><b>Sidon M40</b><span class="g m">nam</span>
+ <span class="f0">105Hz · 3.8s</span></div>
+ <audio controls preload="none" src="clips/row42767.wav"></audio>
+ <div class="txt">Đây có phải sự thể hiện của trí tưởng tượng duy nhất của họ?…</div>
+ <div class="row2"><input value="Sidon M40" id="n63" maxlength="40">
+ <button onclick="enroll(63,'row42767.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s63"></div></div><div class="card" id="c73">
+ <div class="top"><b>Sidon M41</b><span class="g m">nam</span>
+ <span class="f0">105Hz · 11.6s</span></div>
+ <audio controls preload="none" src="clips/row54949.wav"></audio>
+ <div class="txt">kim tự tháp Giza từ đáy cho đến đỉnh đều có một đường lõm xuống khoảng 0,5 đến 1 độ, khiến bề mặt bị phân đôi,…</div>
+ <div class="row2"><input value="Sidon M41" id="n73" maxlength="40">
+ <button onclick="enroll(73,'row54949.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s73"></div></div><div class="card" id="c10">
+ <div class="top"><b>Sidon M42</b><span class="g m">nam</span>
+ <span class="f0">104Hz · 8.2s · x5</span></div>
+ <audio controls preload="none" src="clips/row33683.wav"></audio>
+ <div class="txt">Tất nhiên là vasana của bạn thì lại tùy thuộc hoàn toàn vào loại ký ức, cặn tồn dư hay nội dung nghiệp mà bạn …</div>
+ <div class="row2"><input value="Sidon M42" id="n10" maxlength="40">
+ <button onclick="enroll(10,'row33683.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s10"></div></div><div class="card" id="c23">
+ <div class="top"><b>Sidon M43</b><span class="g m">nam</span>
+ <span class="f0">104Hz · 9.1s · x3</span></div>
+ <audio controls preload="none" src="clips/row20643.wav"></audio>
+ <div class="txt">Một ví dụ nổi tiếng khác nữa là thế lưỡng nan của người tù, ví dụ điển hình cho hình thức thỏa thuận lời khai …</div>
+ <div class="row2"><input value="Sidon M43" id="n23" maxlength="40">
+ <button onclick="enroll(23,'row20643.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s23"></div></div><div class="card" id="c57">
+ <div class="top"><b>Sidon M44</b><span class="g m">nam</span>
+ <span class="f0">104Hz · 11.2s</span></div>
+ <audio controls preload="none" src="clips/row36459.wav"></audio>
+ <div class="txt">Trong những sinh vật đa bào trong tương lai, tế bào nào không dừng lại được những hành vi này khi đang chỉnh s…</div>
+ <div class="row2"><input value="Sidon M44" id="n57" maxlength="40">
+ <button onclick="enroll(57,'row36459.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s57"></div></div><div class="card" id="c12">
+ <div class="top"><b>Sidon M45</b><span class="g m">nam</span>
+ <span class="f0">103Hz · 7.6s · x3</span></div>
+ <audio controls preload="none" src="clips/row4673.wav"></audio>
+ <div class="txt">Chỉ trong một thời gian ngắn, không những dân chúng trong làng mà cả những làng mạc kế cận đều đổ xô đến khe n…</div>
+ <div class="row2"><input value="Sidon M45" id="n12" maxlength="40">
+ <button onclick="enroll(12,'row4673.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s12"></div></div><div class="card" id="c36">
+ <div class="top"><b>Sidon M46</b><span class="g m">nam</span>
+ <span class="f0">103Hz · 4.4s · x2</span></div>
+ <audio controls preload="none" src="clips/row52481.wav"></audio>
+ <div class="txt">cộng 5% đóng ngoặc bằng 105 đồng.…</div>
+ <div class="row2"><input value="Sidon M46" id="n36" maxlength="40">
+ <button onclick="enroll(36,'row52481.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s36"></div></div><div class="card" id="c28">
+ <div class="top"><b>Sidon M47</b><span class="g m">nam</span>
+ <span class="f0">102Hz · 6.6s · x3</span></div>
+ <audio controls preload="none" src="clips/row11811.wav"></audio>
+ <div class="txt">Nguy hiểm bởi vì khi thông cảm, chúng ta chỉ càng ủng hộ căn bệnh nặng đó và như vậy sẽ càng gây thêm tổn hại.…</div>
+ <div class="row2"><input value="Sidon M47" id="n28" maxlength="40">
+ <button onclick="enroll(28,'row11811.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s28"></div></div><div class="card" id="c0">
+ <div class="top"><b>Sidon M48</b><span class="g m">nam</span>
+ <span class="f0">101Hz · 9.2s</span></div>
+ <audio controls preload="none" src="clips/row61.wav"></audio>
+ <div class="txt">Năm 1889, một năm khô hạn, năm mà lễ trồng cây Arbor được phát động trên toàn bang.…</div>
+ <div class="row2"><input value="Sidon M48" id="n0" maxlength="40">
+ <button onclick="enroll(0,'row61.wav','nam')">+ Thêm</button></div>
+ <div class="st" id="s0"></div></div><div class="card" id="c27">
+ <div class="top"><b>Sidon F00</b><span class="g f">nữ</span>
+ <span class="f0">234Hz · 6.7s · x2</span></div>
+ <audio controls preload="none" src="clips/row38129.wav"></audio>
+ <div class="txt">Ngồi tư lự một mình, nhìn dòng người đi qua đi lại, quán cà phê hết nhóm này tới và rời đi, lại tới nhóm khác …</div>
+ <div class="row2"><input value="Sidon F00" id="n27" maxlength="40">
+ <button onclick="enroll(27,'row38129.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s27"></div></div><div class="card" id="c42">
+ <div class="top"><b>Sidon F01</b><span class="g f">nữ</span>
+ <span class="f0">221Hz · 4.9s · x3</span></div>
+ <audio controls preload="none" src="clips/row53746.wav"></audio>
+ <div class="txt">Bạn có thể mua mẫu rập và những chất liệu không đắt tiền để làm ra một chiếc áo đầm xinh xắn.…</div>
+ <div class="row2"><input value="Sidon F01" id="n42" maxlength="40">
+ <button onclick="enroll(42,'row53746.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s42"></div></div><div class="card" id="c3">
+ <div class="top"><b>Sidon F02</b><span class="g f">nữ</span>
+ <span class="f0">218Hz · 14.3s · x2</span></div>
+ <audio controls preload="none" src="clips/row27950.wav"></audio>
+ <div class="txt">Nói cách khác, những trường hợp ấy không chỉ đơn giản là sự phóng chiếu niềm tin tôn giáo vốn sẵn có trong tâm…</div>
+ <div class="row2"><input value="Sidon F02" id="n3" maxlength="40">
+ <button onclick="enroll(3,'row27950.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s3"></div></div><div class="card" id="c67">
+ <div class="top"><b>Sidon F03</b><span class="g f">nữ</span>
+ <span class="f0">218Hz · 4.6s</span></div>
+ <audio controls preload="none" src="clips/row49212.wav"></audio>
+ <div class="txt">Tôi đã rất thích bắt đầu câu chuyện này giống như một câu chuyện cổ tích.…</div>
+ <div class="row2"><input value="Sidon F03" id="n67" maxlength="40">
+ <button onclick="enroll(67,'row49212.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s67"></div></div><div class="card" id="c51">
+ <div class="top"><b>Sidon F04</b><span class="g f">nữ</span>
+ <span class="f0">217Hz · 6.3s</span></div>
+ <audio controls preload="none" src="clips/row29934.wav"></audio>
+ <div class="txt">để chọn lựa đúng đắn phù hợp cho riêng mình, tìm ra chìa khóa cân bằng trong chế độ ăn.…</div>
+ <div class="row2"><input value="Sidon F04" id="n51" maxlength="40">
+ <button onclick="enroll(51,'row29934.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s51"></div></div><div class="card" id="c56">
+ <div class="top"><b>Sidon F05</b><span class="g f">nữ</span>
+ <span class="f0">216Hz · 13.0s · x2</span></div>
+ <audio controls preload="none" src="clips/row50661.wav"></audio>
+ <div class="txt">Để ngăn ta cuốn vào các tình huống dễ dẫn đến xung đột, một chuyên gia trong lĩnh vực nuôi dạy con cái khuyên …</div>
+ <div class="row2"><input value="Sidon F05" id="n56" maxlength="40">
+ <button onclick="enroll(56,'row50661.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s56"></div></div><div class="card" id="c55">
+ <div class="top"><b>Sidon F06</b><span class="g f">nữ</span>
+ <span class="f0">215Hz · 7.2s</span></div>
+ <audio controls preload="none" src="clips/row33446.wav"></audio>
+ <div class="txt">Tổng thống Harry S. Truman của Mỹ lúc bấy giờ đã ca ngợi bà là người nghệ sĩ đã tặng cho thế giới một cuốn sác…</div>
+ <div class="row2"><input value="Sidon F06" id="n55" maxlength="40">
+ <button onclick="enroll(55,'row33446.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s55"></div></div><div class="card" id="c4">
+ <div class="top"><b>Sidon F07</b><span class="g f">nữ</span>
+ <span class="f0">213Hz · 2.8s</span></div>
+ <audio controls preload="none" src="clips/row1435.wav"></audio>
+ <div class="txt">Đúng là vợ anh hơi bị ấy ấy đấy.…</div>
+ <div class="row2"><input value="Sidon F07" id="n4" maxlength="40">
+ <button onclick="enroll(4,'row1435.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s4"></div></div><div class="card" id="c7">
+ <div class="top"><b>Sidon F08</b><span class="g f">nữ</span>
+ <span class="f0">212Hz · 9.7s · x3</span></div>
+ <audio controls preload="none" src="clips/row2032.wav"></audio>
+ <div class="txt">Điều thường xảy ra trong một cuộc tranh luận công khai đó là các vấn đề phức tạp nhất có xu hướng phân cực rất…</div>
+ <div class="row2"><input value="Sidon F08" id="n7" maxlength="40">
+ <button onclick="enroll(7,'row2032.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s7"></div></div><div class="card" id="c65">
+ <div class="top"><b>Sidon F09</b><span class="g f">nữ</span>
+ <span class="f0">211Hz · 5.7s</span></div>
+ <audio controls preload="none" src="clips/row44157.wav"></audio>
+ <div class="txt">Trong toàn bộ quá trình ấy, bản thân enzyme không hề bị biến đổi, phá hủy hay cạn kiệt.…</div>
+ <div class="row2"><input value="Sidon F09" id="n65" maxlength="40">
+ <button onclick="enroll(65,'row44157.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s65"></div></div><div class="card" id="c69">
+ <div class="top"><b>Sidon F10</b><span class="g f">nữ</span>
+ <span class="f0">210Hz · 8.3s</span></div>
+ <audio controls preload="none" src="clips/row50616.wav"></audio>
+ <div class="txt">Lại nói, sau khi xác đứa trẻ được chôn xuống, qua một đêm huyệt sẽ bị đào tung lên, cái xác cũng không thấy đâ…</div>
+ <div class="row2"><input value="Sidon F10" id="n69" maxlength="40">
+ <button onclick="enroll(69,'row50616.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s69"></div></div><div class="card" id="c52">
+ <div class="top"><b>Sidon F11</b><span class="g f">nữ</span>
+ <span class="f0">207Hz · 6.7s</span></div>
+ <audio controls preload="none" src="clips/row31248.wav"></audio>
+ <div class="txt">Một, hai lần thì cậu sẽ không nói gì, nhưng đến lần thứ ba cậu sẽ suất cho đứa ấy một cú.…</div>
+ <div class="row2"><input value="Sidon F11" id="n52" maxlength="40">
+ <button onclick="enroll(52,'row31248.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s52"></div></div><div class="card" id="c71">
+ <div class="top"><b>Sidon F12</b><span class="g f">nữ</span>
+ <span class="f0">205Hz · 5.0s</span></div>
+ <audio controls preload="none" src="clips/row51754.wav"></audio>
+ <div class="txt">Từ trong sâu thẳm tâm hồn con, giờ hãy để chữa lành.…</div>
+ <div class="row2"><input value="Sidon F12" id="n71" maxlength="40">
+ <button onclick="enroll(71,'row51754.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s71"></div></div><div class="card" id="c49">
+ <div class="top"><b>Sidon F13</b><span class="g f">nữ</span>
+ <span class="f0">204Hz · 4.6s</span></div>
+ <audio controls preload="none" src="clips/row25601.wav"></audio>
+ <div class="txt">Trong niêm mạc dạ dày có một lớp lông nhung nhấp nhô, tiết ra acid dạ dày.…</div>
+ <div class="row2"><input value="Sidon F13" id="n49" maxlength="40">
+ <button onclick="enroll(49,'row25601.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s49"></div></div><div class="card" id="c17">
+ <div class="top"><b>Sidon F14</b><span class="g f">nữ</span>
+ <span class="f0">202Hz · 9.5s · x2</span></div>
+ <audio controls preload="none" src="clips/row7805.wav"></audio>
+ <div class="txt">Mặc dù hai cô chẳng biết nấu ăn, nhà cửa, ly tách bề bộn, chén ăn xong không biết rửa, dù gia đình không thuộc…</div>
+ <div class="row2"><input value="Sidon F14" id="n17" maxlength="40">
+ <button onclick="enroll(17,'row7805.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s17"></div></div><div class="card" id="c38">
+ <div class="top"><b>Sidon F15</b><span class="g f">nữ</span>
+ <span class="f0">201Hz · 12.1s · x2</span></div>
+ <audio controls preload="none" src="clips/row27984.wav"></audio>
+ <div class="txt">Các căn phòng như trên cho phép người sử dụng có thể di chuyển một cách tự do, không bị làm phiền bởi ký ức về…</div>
+ <div class="row2"><input value="Sidon F15" id="n38" maxlength="40">
+ <button onclick="enroll(38,'row27984.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s38"></div></div><div class="card" id="c40">
+ <div class="top"><b>Sidon F16</b><span class="g f">nữ</span>
+ <span class="f0">200Hz · 4.5s</span></div>
+ <audio controls preload="none" src="clips/row20202.wav"></audio>
+ <div class="txt">Những gì xuất hiện ở đây sẽ lan tỏa và tràn ngập những phần khác trong ngôi nhà.…</div>
+ <div class="row2"><input value="Sidon F16" id="n40" maxlength="40">
+ <button onclick="enroll(40,'row20202.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s40"></div></div><div class="card" id="c74">
+ <div class="top"><b>Sidon F17</b><span class="g f">nữ</span>
+ <span class="f0">198Hz · 8.7s</span></div>
+ <audio controls preload="none" src="clips/row55149.wav"></audio>
+ <div class="txt">Các bậc cha mẹ dạy con cái rằng nếu chúng học được các thói quen tốt bây giờ thì chúng sẽ trở nên tốt đẹp khi …</div>
+ <div class="row2"><input value="Sidon F17" id="n74" maxlength="40">
+ <button onclick="enroll(74,'row55149.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s74"></div></div><div class="card" id="c76">
+ <div class="top"><b>Sidon F18</b><span class="g f">nữ</span>
+ <span class="f0">198Hz · 5.3s</span></div>
+ <audio controls preload="none" src="clips/row57873.wav"></audio>
+ <div class="txt">Cô gái khiến cho anh cảm thấy mình chưa trưởng thành đến mức nào khi lần đầu tiên họ quan hệ.…</div>
+ <div class="row2"><input value="Sidon F18" id="n76" maxlength="40">
+ <button onclick="enroll(76,'row57873.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s76"></div></div><div class="card" id="c6">
+ <div class="top"><b>Sidon F19</b><span class="g f">nữ</span>
+ <span class="f0">194Hz · 5.8s · x4</span></div>
+ <audio controls preload="none" src="clips/row27900.wav"></audio>
+ <div class="txt">Thế nhưng, thiên nhiên đâu có buồn tẻ đến thế, và cũng chẳng coi thường người đi ngang qua đích thực.…</div>
+ <div class="row2"><input value="Sidon F19" id="n6" maxlength="40">
+ <button onclick="enroll(6,'row27900.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s6"></div></div><div class="card" id="c66">
+ <div class="top"><b>Sidon F20</b><span class="g f">nữ</span>
+ <span class="f0">191Hz · 5.8s</span></div>
+ <audio controls preload="none" src="clips/row48322.wav"></audio>
+ <div class="txt">Tôi muốn nói rằng các bạn đang có những cánh đồng kim cương ngay tại nơi các bạn đang sống.…</div>
+ <div class="row2"><input value="Sidon F20" id="n66" maxlength="40">
+ <button onclick="enroll(66,'row48322.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s66"></div></div><div class="card" id="c14">
+ <div class="top"><b>Sidon F21</b><span class="g f">nữ</span>
+ <span class="f0">187Hz · 14.2s</span></div>
+ <audio controls preload="none" src="clips/row5519.wav"></audio>
+ <div class="txt">Tớ mệt rã cả người, nên dù biết đó sẽ là đêm cuối cùng được nằm trên cái giường thân yêu, tớ vẫn thiếp đi ngay…</div>
+ <div class="row2"><input value="Sidon F21" id="n14" maxlength="40">
+ <button onclick="enroll(14,'row5519.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s14"></div></div><div class="card" id="c15">
+ <div class="top"><b>Sidon F22</b><span class="g f">nữ</span>
+ <span class="f0">183Hz · 14.2s · x2</span></div>
+ <audio controls preload="none" src="clips/row48719.wav"></audio>
+ <div class="txt">Nhưng trước mắt, bạn hãy hiểu rằng mọi người muốn được bạn đối xử tử tế, công bằng và thành thật bởi vì năng l…</div>
+ <div class="row2"><input value="Sidon F22" id="n15" maxlength="40">
+ <button onclick="enroll(15,'row48719.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s15"></div></div><div class="card" id="c37">
+ <div class="top"><b>Sidon F23</b><span class="g f">nữ</span>
+ <span class="f0">183Hz · 6.2s</span></div>
+ <audio controls preload="none" src="clips/row17166.wav"></audio>
+ <div class="txt">Điều 648 Bộ luật Dân sự năm 2015 đã có sửa đổi quy định này theo hướng.…</div>
+ <div class="row2"><input value="Sidon F23" id="n37" maxlength="40">
+ <button onclick="enroll(37,'row17166.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s37"></div></div><div class="card" id="c39">
+ <div class="top"><b>Sidon F24</b><span class="g f">nữ</span>
+ <span class="f0">182Hz · 5.6s</span></div>
+ <audio controls preload="none" src="clips/row17791.wav"></audio>
+ <div class="txt">Vợ chồng bàn tính gần tới nửa đêm, mới khuấy sữa cho hai em nhỏ bú nữa, rồi đi ngủ.…</div>
+ <div class="row2"><input value="Sidon F24" id="n39" maxlength="40">
+ <button onclick="enroll(39,'row17791.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s39"></div></div><div class="card" id="c68">
+ <div class="top"><b>Sidon F25</b><span class="g f">nữ</span>
+ <span class="f0">181Hz · 4.4s</span></div>
+ <audio controls preload="none" src="clips/row50606.wav"></audio>
+ <div class="txt">Điều đó thôi thúc Bác muốn tiếp xúc với nền văn minh Pháp để khám phá ra sự thật.…</div>
+ <div class="row2"><input value="Sidon F25" id="n68" maxlength="40">
+ <button onclick="enroll(68,'row50606.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s68"></div></div><div class="card" id="c54">
+ <div class="top"><b>Sidon F26</b><span class="g f">nữ</span>
+ <span class="f0">180Hz · 4.5s</span></div>
+ <audio controls preload="none" src="clips/row32702.wav"></audio>
+ <div class="txt">Về cách Hoàng Trù 4km thì gặp dân xã đang náo nức kéo nhau đi rước ông.…</div>
+ <div class="row2"><input value="Sidon F26" id="n54" maxlength="40">
+ <button onclick="enroll(54,'row32702.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s54"></div></div><div class="card" id="c48">
+ <div class="top"><b>Sidon F27</b><span class="g f">nữ</span>
+ <span class="f0">176Hz · 4.6s</span></div>
+ <audio controls preload="none" src="clips/row24930.wav"></audio>
+ <div class="txt">Hắn loạng choạng vừa đi vừa cười, hắn chẳng cần đến ba xu.…</div>
+ <div class="row2"><input value="Sidon F27" id="n48" maxlength="40">
+ <button onclick="enroll(48,'row24930.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s48"></div></div><div class="card" id="c60">
+ <div class="top"><b>Sidon F28</b><span class="g f">nữ</span>
+ <span class="f0">161Hz · 5.6s</span></div>
+ <audio controls preload="none" src="clips/row39864.wav"></audio>
+ <div class="txt">Báo chí ca ngợi đây là sự ưu việt của máy móc so với con người, giống như thời khắc mà TV giết chết đài phát t…</div>
+ <div class="row2"><input value="Sidon F28" id="n60" maxlength="40">
+ <button onclick="enroll(60,'row39864.wav','nữ')">+ Thêm</button></div>
+ <div class="st" id="s60"></div></div></div>
+<script>
+async function enroll(i,wav,g){
+ const st=document.getElementById('s'+i),btn=event.target;
+ btn.disabled=true; st.textContent='đang enroll…'; st.className='st';
+ const name=document.getElementById('n'+i).value.trim()||('Sidon '+i);
+ const r=await fetch('/api/tts/enroll',{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({name,ref_wav:'C:/Users/ADMIN/Documents/Doctruyen/public/voicepicker/clips/'+wav,gender:g,description:'giọng từ kho Sidon'})});
+ const d=await r.json();
+ if(d.ok){st.innerHTML='✓ đã thêm (tổng '+d.total+') <a href="#" onclick="rm('+i+',\''+name.replace(/'/g,"\\'")+'\');return false" style="color:#e77">xóa</a>'}
+ else{st.textContent='✗ '+(d.error||'lỗi');st.className='st err';btn.disabled=false}
+}
+async function rm(i,name){
+ if(!confirm('Xóa giọng "'+name+'"?'))return;
+ const st=document.getElementById('s'+i);
+ const r=await fetch('/api/tts/remove_voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+ const d=await r.json();
+ if(d.ok){st.textContent='đã xóa (tổng '+d.total+')';document.querySelector('#c'+i+' button').disabled=false}
+ else{st.textContent='✗ '+(d.error||'lỗi')}
+}
+</script>

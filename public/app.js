@@ -194,6 +194,7 @@
         tts.idx = ai;
         if (tts.pendingStart) {
           tts.pendingStart = false;
+          tts.jumpTo = 0;
           ttsPlay(ai);
         } else {
           ttsStop();
@@ -1170,9 +1171,16 @@
       .then(function () { return fetchJSON("/api/translate"); })
       .then(function (c) { trConf = c; renderTrCards(); });
   });
+  // local provider needs no key — swap the input for a hint instead
+  $("tr-prov").addEventListener("change", function () {
+    var local = this.value === "local";
+    $("tr-key").disabled = local;
+    $("tr-key").value = "";
+    $("tr-key").placeholder = local ? "localhost:8399 — không cần key" : "Dán API key…";
+  });
   $("tr-add").addEventListener("click", function () {
     var key = $("tr-key").value.trim();
-    if (!key) return;
+    if (!key && $("tr-prov").value !== "local") return;
     $("tr-add").disabled = true;
     fetch("/api/translate/keys", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -1451,15 +1459,55 @@
       return v.indexOf("omni:") === 0 ? "Thiện Minh" : v;
     })(),
     speed: SPEEDS.indexOf(+localStorage.getItem("tts_speed")) >= 0 ? +localStorage.getItem("tts_speed") : 1,
+    // auto = remote (ttb:8000) first, local :8002 fallback; remote/local pin one engine
+    engine: ["auto", "remote", "local"].indexOf(localStorage.getItem("tts_engine")) >= 0
+      ? localStorage.getItem("tts_engine") : "auto",
     buf: {},   // idx -> Promise<objectURL>
     gen: 0,    // generation counter to cancel stale callbacks
     nextChap: 0, nextSegs: null, nextBuf: {}, // prefetched next chapter
     sleepCh: false, // stop at the end of the current chapter
+    jumpTo: 0,      // chapter a pendingStart navigation is heading to
   };
+  tts.audio.preload = "auto";
+
+  /* ---- silent keepalive: a looping inaudible WAV keeps the page
+     "audible" for the whole TTS session, so Android can't freeze the
+     page or throttle its timers during the silence between segments,
+     synthesis gaps, or chapter hand-offs. volume must be >0 —
+     a muted/volume-0 element doesn't count as audible.
+     MOBILE ONLY: on desktop it buys nothing, and a persistent low-fi
+     8kHz stream can drag the shared output into a degraded mode on
+     some stacks (was the "nghe nhu nghet mui" report). ---- */
+  var ttsKeepAlive = (function () {
+    var off = !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+              localStorage.getItem("tts_keepalive") === "0" ||
+              qs.get("keepalive") === "0"; // test kill-switch (no console needed)
+    if (off) {
+      var noop = { paused: true, play: function () { return Promise.resolve(); },
+                   pause: function () {}, loop: false, volume: 0 };
+      return noop;
+    }
+    // 48kHz/16-bit — same format as the TTS output so the mixer can't treat
+    // it as a low-fi stream and drag the shared output down (the old 8kHz
+    // 8-bit version did exactly that on some devices)
+    var sr = 48000, n = sr * 2, sz = 44 + n * 2; // 2s of 48kHz mono 16-bit PCM
+    var b = new ArrayBuffer(sz), v = new DataView(b);
+    function ws(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
+    ws(0, "RIFF"); v.setUint32(4, sz - 8, true); ws(8, "WAVE");
+    ws(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    ws(36, "data"); v.setUint32(40, n * 2, true);
+    for (var i = 44; i < sz; i++) v.setUint8(i, 0); // 0 = silence in 16-bit PCM
+    var a = new Audio(URL.createObjectURL(new Blob([b], { type: "audio/wav" })));
+    a.loop = true;
+    a.volume = 0.02;
+    return a;
+  })();
 
   /* ---------- keep screen awake (Screen Wake Lock) ---------- */
-  var wakeLock = null, wakeOn = false;
-  function setWake(on) {
+  var wakeLock = null, wakeOn = false, wakeNeedGesture = false, wakeWarned = false;
+  function setWake(on, quiet) {
     wakeOn = on;
     $("btn-wake").classList.toggle("on", on);
     // PC display: only when browsing from the PC itself (localhost).
@@ -1472,21 +1520,34 @@
       body: JSON.stringify({ on: on && isLocal }),
     }).catch(function () {});
     if (on) {
-      acquireWake();
+      acquireWake(!quiet);
     } else {
+      wakeNeedGesture = false;
       if (wakeLock) {
         wakeLock.release().catch(function () {});
         wakeLock = null;
       }
     }
   }
-  function acquireWake() {
+  function acquireWake(loud) {
     if (!("wakeLock" in navigator)) {
-      toast("Trình duyệt không hỗ trợ giữ màn — cần mở bằng https://");
+      if (loud && !wakeWarned) {
+        wakeWarned = true;
+        toast("Trình duyệt không hỗ trợ giữ màn — cần mở bằng https://");
+      }
       return;
     }
+    if (wakeLock && !wakeLock.released) return; // still holding it
+    // the platform rejects requests from a hidden document — the
+    // visibilitychange handler below re-arms as soon as we are back
+    if (document.visibilityState !== "visible") return;
     navigator.wakeLock.request("screen").then(function (wl) {
       wakeLock = wl;
+      // Android auto-releases the lock on hide — clear the stale sentinel
+      // so re-acquisition isn't skipped by the old truthy handle
+      wl.addEventListener("release", function () {
+        if (wakeLock === wl) wakeLock = null;
+      });
     }).catch(function (e) {
       // iOS requires a user gesture — retry on next touch if this failed
       if (e && e.name === "NotAllowedError") wakeNeedGesture = true;
@@ -1494,19 +1555,24 @@
   }
   // wake lock auto-releases when tab is hidden — re-acquire on return;
   // on iOS a re-acquire needs a fresh gesture, so also retry on touch/click
-  var wakeNeedGesture = false;
   document.addEventListener("visibilitychange", function () {
-    if (wakeOn && document.visibilityState === "visible" && !wakeLock) acquireWake();
+    if (wakeOn && document.visibilityState === "visible") acquireWake();
   });
   document.addEventListener("touchstart", retryWake, { passive: true });
   document.addEventListener("click", retryWake);
   function retryWake() {
-    if (wakeOn && (!wakeLock || wakeNeedGesture)) {
+    if (wakeOn && (!wakeLock || wakeLock.released || wakeNeedGesture)) {
       wakeNeedGesture = false;
       acquireWake();
     }
   }
-  $("btn-wake").addEventListener("click", function () { setWake(!wakeOn); });
+  $("btn-wake").addEventListener("click", function () {
+    setWake(!wakeOn);
+    // persist explicit toggles only — TTS auto-wake is a session boost
+    // and must not silently overwrite the remembered preference
+    try { localStorage.setItem("wake_lock", wakeOn ? "1" : "0"); } catch (e) {}
+  });
+  try { if (localStorage.getItem("wake_lock") === "1") setWake(true, true); } catch (e) {}
 
   // split chapter paragraphs into ~<=260-char sentence chunks
   function ttsBuild(paras) {
@@ -1596,16 +1662,37 @@
     });
   }
 
-  function ttsFetchSeg(segs, buf, i, front) {
+  // VieNeu sampling is stochastic (temperature 0.8, no seed) — occasionally a
+  // generation ends early and swallows most of the text (~4% of segments:
+  // 170 chars -> 0.9s audio) or rambles far past it (10 chars -> 18s). Both
+  // sound like the voice tripping over words. Re-roll once when the returned
+  // audio length is physically implausible for the text (~19 chars/s normal).
+  function ttsBadAudio(text, byteLen) {
+    if (byteLen < 48 || text.length < 40) return false;
+    var dur = (byteLen - 44) / 96000; // PCM16 mono 48 kHz
+    var cps = text.length / dur;
+    return cps > 40 || cps < 6;
+  }
+
+  function ttsFetchSeg(segs, buf, i, front, retried) {
     if (i >= segs.length) return Promise.resolve(null);
     if (!buf[i]) {
       var url = "/api/tts/stream?text=" + encodeURIComponent(segs[i].text) +
-                "&voice_id=" + encodeURIComponent(tts.voice);
+                "&voice_id=" + encodeURIComponent(tts.voice) +
+                "&engine=" + tts.engine;
       buf[i] = ttsSched(function () {
-        return fetch(url).then(function (r) {
+        // hard timeout: a hung upstream synth would otherwise pin this
+        // slot forever — every retry resolves to the same stale promise
+        var ctl = new AbortController();
+        var to = setTimeout(function () { ctl.abort(); }, 40000);
+        return fetch(url, { signal: ctl.signal }).then(function (r) {
           if (!r.ok) throw new Error("tts " + r.status);
           return r.arrayBuffer();
         }).then(function (ab) {
+          if (!retried && ttsBadAudio(segs[i].text, ab.byteLength)) {
+            delete buf[i];
+            return ttsFetchSeg(segs, buf, i, front, true);
+          }
           // stream WAV has a bogus header (data size 0) — patch it so <audio> accepts it
           var dv = new DataView(ab);
           if (ab.byteLength > 44 && dv.getUint32(0) === 0x46464952) {
@@ -1613,7 +1700,7 @@
             dv.setUint32(40, ab.byteLength - 44, true);
           }
           return URL.createObjectURL(new Blob([ab], { type: "audio/wav" }));
-        });
+        }).finally(function () { clearTimeout(to); });
       }, front, buf === tts.buf ? i : -2);
       buf[i].catch(function () { delete buf[i]; });
     }
@@ -1669,6 +1756,14 @@
 
   function ttsPlay(i) {
     if (!tts.on) return;
+    // the sleep setTimeout may have been throttled while hidden —
+    // re-check the wall clock so the timer still lands on time
+    if (sleepEnd && Date.now() >= sleepEnd) {
+      setSleep("0");
+      ttsPause();
+      ttsStatus("Hẹn giờ: đã dừng");
+      return;
+    }
     if (i >= tts.segs.length) {
       if (tts.sleepCh) {
         // sleep timer "hết chương": stop here instead of rolling over
@@ -1682,6 +1777,7 @@
       if (nx !== null) {
         ttsStatus("Hết chương — sang chương " + nx);
         tts.pendingStart = true;
+        tts.jumpTo = nx;
         go(nx);
       } else {
         ttsStop();
@@ -1751,9 +1847,28 @@
       navigator.mediaSession.setActionHandler("pause", function () { if (tts.on) ttsPause(); });
       navigator.mediaSession.setActionHandler("previoustrack", function () { if (tts.on) ttsPlay(Math.max(0, tts.idx - 1)); });
       navigator.mediaSession.setActionHandler("nexttrack", function () { if (tts.on) ttsPlay(Math.min(tts.segs.length, tts.idx + 1)); });
+      navigator.mediaSession.setActionHandler("seekbackward", function () { if (tts.on) ttsStep(-1); });
+      navigator.mediaSession.setActionHandler("seekforward", function () { if (tts.on) ttsStep(1); });
       navigator.mediaSession.setActionHandler("stop", function () { if (tts.on) ttsPause(); });
     } catch (e) {}
   }
+
+  // background stall watchdog: while we believe we're playing, if the
+  // element sits paused for a full tick (throttled callback, dropped
+  // 'ended' event, OS audio hiccup), nudge the chain forward again.
+  // ttsPlay() is re-entrant-safe (cached fetch promises + gen guard);
+  // pages playing audio are exempt from intensive throttling, so this
+  // interval still runs on time while minimized with the screen off.
+  setInterval(function () {
+    if (!tts.on) return;
+    if (ttsKeepAlive.paused) ttsKeepAlive.play().catch(function () {});
+    if (!tts.playing || seeking || !tts.audio.paused) return;
+    if (tts.pendingStart && tts.jumpTo) {
+      go(tts.jumpTo); // chapter navigation stalled mid-flight — re-issue
+      return;
+    }
+    ttsPlay(tts.idx);
+  }, 10000);
 
   function ttsPause() {
     tts.playing = false;
@@ -1794,6 +1909,7 @@
   function ttsOpen() {
     tts.on = true;
     setWake(true);
+    ttsKeepAlive.play().catch(function () {});
     document.body.classList.add("tts-on");
     $("btn-tts").classList.add("on");
     $("ts-book").textContent = titleOf(bookMeta);
@@ -1857,8 +1973,16 @@
     tts.on = false;
     setWake(false);
     closeTtsSheet();
+    // drop the media notification so Android doesn't keep showing a dead player
+    if ("mediaSession" in navigator) {
+      try {
+        navigator.mediaSession.playbackState = "none";
+        navigator.mediaSession.metadata = null;
+      } catch (e) {}
+    }
     document.body.classList.remove("tts-on");
     $("btn-tts").classList.remove("on");
+    ttsKeepAlive.pause();
     var ps = $("chap-body").children;
     for (var i = 0; i < ps.length; i++) ps[i].classList.remove("reading");
   }
@@ -1876,6 +2000,7 @@
     var n = nearestNum(state.chapter + dir, dir);
     if (n === null) return;
     tts.pendingStart = tts.playing; // keep playing across the jump
+    tts.jumpTo = n;
     go(n);
   }
 
@@ -1901,6 +2026,19 @@
     ttsStop();
     tts.idx = i;
     if (was) ttsPlay(i); else ttsStatus("Đã đổi giọng · bấm ▶ để đọc tiếp");
+  });
+  $("tts-engine").value = tts.engine;
+  $("tts-engine").addEventListener("change", function () {
+    tts.engine = this.value;
+    localStorage.setItem("tts_engine", tts.engine);
+    // drop buffers so subsequent playback actually comes from the new engine
+    ttsClearBuf(); ttsClearNext();
+    var i = tts.idx, was = tts.playing;
+    ttsStop();
+    tts.idx = i;
+    if (was) ttsPlay(i);
+    else ttsStatus(this.value === "auto" ? "Tự động · ưu tiên ttb"
+      : this.value === "remote" ? "Đọc qua ttb (máy xa)" : "Đọc trên máy này");
   });
 
   // seek: drag previews the position, release jumps there

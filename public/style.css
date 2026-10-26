@@ -863,6 +863,7 @@ body.tts-on #toast { bottom: calc(100px + var(--safe-b)); }
   body.tts-on #resume-wrap { bottom: calc(90px + var(--safe-b)); }
 }
 @media (max-width: 380px) {
-  #btn-wake { display: none !important; }
+  .icon-btn { width: 36px; height: 36px; }
+  .icon-btn .ic { width: 19px; height: 19px; }
   .cover-grid { gap: 18px 10px; }
 }

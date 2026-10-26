@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Thư viện truyện</title>
 <link rel="icon" href="/icon-192.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">
 <meta name="theme-color" content="#f3ead6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Truyện">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="preload" href="/fonts/literata-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=15">
+<link rel="stylesheet" href="/style.css?v=16">
 </head>
 <body data-theme="sepia">
 
@@ -241,6 +241,14 @@
     </div>
     <div id="ts-status" class="ts-status"></div>
     <div class="ts-row">
+      <label>Nguồn TTS</label>
+      <select id="tts-engine" title="Nguồn TTS">
+        <option value="auto">Tự động · ưu tiên ttb</option>
+        <option value="remote">ttb (máy xa)</option>
+        <option value="local">Máy này (local)</option>
+      </select>
+    </div>
+    <div class="ts-row">
       <label>Giọng đọc</label>
       <select id="tts-voice" title="Giọng đọc"></select>
     </div>
@@ -326,6 +334,7 @@
       <select id="tr-prov">
         <option value="opencode">OpenCode Go</option>
         <option value="ollama">Ollama Cloud</option>
+        <option value="local">Local — Gemma 12B (llama-server)</option>
       </select>
       <input id="tr-key" type="password" placeholder="Dán API key…" autocomplete="off">
       <button id="tr-add">Thêm</button>
@@ -370,7 +379,7 @@
 <div id="page-ind"></div>
 <div id="toast"></div>
 
-<script src="/app.js?v=17"></script>
+<script src="/app.js?v=22"></script>
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {

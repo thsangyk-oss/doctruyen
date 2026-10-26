@@ -1,0 +1,92 @@
+{
+  "rows": [
+    {
+      "ch": 1,
+      "paras": 211,
+      "zhParas": 211,
+      "chunks": 8,
+      "zhChars": 5545,
+      "secs": 234.3
+    },
+    {
+      "ch": 2,
+      "paras": 135,
+      "zhParas": 135,
+      "chunks": 5,
+      "zhChars": 3033,
+      "secs": 504
+    },
+    {
+      "ch": 3,
+      "paras": 124,
+      "zhParas": 127,
+      "chunks": 5,
+      "zhChars": 3258,
+      "secs": 158.6
+    },
+    {
+      "ch": 4,
+      "paras": 86,
+      "zhParas": 86,
+      "chunks": 3,
+      "zhChars": 2320,
+      "secs": 93
+    },
+    {
+      "ch": 5,
+      "paras": 131,
+      "zhParas": 131,
+      "chunks": 5,
+      "zhChars": 2790,
+      "secs": 146.6
+    },
+    {
+      "ch": 6,
+      "paras": 103,
+      "zhParas": 103,
+      "chunks": 4,
+      "zhChars": 2688,
+      "secs": 136.3
+    },
+    {
+      "ch": 7,
+      "paras": 140,
+      "zhParas": 140,
+      "chunks": 5,
+      "zhChars": 3255,
+      "secs": 152.4
+    },
+    {
+      "ch": 8,
+      "paras": 135,
+      "zhParas": 136,
+      "chunks": 5,
+      "zhChars": 3028,
+      "secs": 152.9
+    },
+    {
+      "ch": 9,
+      "paras": 94,
+      "zhParas": 94,
+      "chunks": 4,
+      "zhChars": 2733,
+      "secs": 134.5
+    },
+    {
+      "ch": 10,
+      "paras": 117,
+      "zhParas": 117,
+      "chunks": 4,
+      "zhChars": 2996,
+      "secs": 151.4
+    }
+  ],
+  "stats": {
+    "prompt": 48652,
+    "completion": 124366,
+    "calls": 51,
+    "rescues": 0,
+    "splits": 0
+  },
+  "think": true
+}

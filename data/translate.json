@@ -284,7 +284,20 @@
           "family": "ollama"
         }
       ]
+    },
+    {
+      "name": "api3",
+      "key": "",
+      "provider": "local",
+      "model": "C:/Users/ADMIN/models/Gemma4-12B-Uncensored-1M-Q4.gguf",
+      "models": [
+        {
+          "id": "C:/Users/ADMIN/models/Gemma4-12B-Uncensored-1M-Q4.gguf",
+          "name": "Gemma4-12B-Uncensored-1M-Q4.gguf",
+          "family": "llamacpp"
+        }
+      ]
     }
   ],
-  "active": "api1"
+  "active": "api3"
 }

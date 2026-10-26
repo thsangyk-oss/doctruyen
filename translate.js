@@ -8,8 +8,11 @@ const fs = require("fs");
 const path = require("path");
 const oc = require("./opencode");
 const ol = require("./ollama");
-// provider dispatch — key cards carry .provider ("opencode" default, "ollama")
-const apiOf = (card) => (card && card.provider === "ollama" ? ol : oc);
+const olLocal = ol.local;
+// provider dispatch — key cards carry .provider ("opencode" default,
+// "ollama" cloud, "local" = ollama daemon on this machine)
+const apiOf = (card) => (card && card.provider === "local" ? olLocal
+  : card && card.provider === "ollama" ? ol : oc);
 
 const ARGS = {};
 process.argv.slice(2).forEach((a) => {
@@ -135,8 +138,10 @@ const CHUNK_CHARS_OL = 1000;
 const CHUNK_PARAS_OL = 30;
 function chunkParas(paras) {
   const out = []; let cur = [], len = 0;
-  const maxChars = api === ol ? CHUNK_CHARS_OL : CHUNK_CHARS;
-  const maxParas = api === ol ? CHUNK_PARAS_OL : CHUNK_PARAS;
+  // local runs the same thinking models — same soft tool-call limits apply
+  const small = api === ol || api === olLocal;
+  const maxChars = small ? CHUNK_CHARS_OL : CHUNK_CHARS;
+  const maxParas = small ? CHUNK_PARAS_OL : CHUNK_PARAS;
   for (const p of paras) {
     if (cur.length && (len + p.length > maxChars || cur.length >= maxParas)) {
       out.push(cur); cur = []; len = 0;
@@ -218,12 +223,16 @@ async function translateChapter(num, key, model) {
     : conf.keys.find((k) => k.name === conf.active) || conf.keys[0];
   // --model=<id> overrides the card's saved model (per-chapter retranslate)
   const model = card && (ARGS.model || card.model);
-  if (!card || !card.key || !model) {
+  // local cards carry no API key — the daemon needs none
+  if (!card || (card.provider !== "local" && !card.key) || !model) {
     job.status = "error"; job.error = "chưa cấu hình API key/model"; saveJob();
     return;
   }
   api = apiOf(card);
-  if (!WORKERS) WORKERS = card.provider === "ollama" ? 4 : 24;
+  // local llama-server runs --parallel 2 (8192 ctx/slot) — extra lanes
+  // just queue server-side, so match the real slot count
+  if (!WORKERS) WORKERS = card.provider === "local" ? 2
+    : card.provider === "ollama" ? 4 : 24;
   job.model = model; job.keyName = card.name; job.provider = card.provider || "opencode";
   saveJob();
   log(`start key=${card.name} provider=${job.provider} model=${model} workers=${WORKERS}` +

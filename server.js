@@ -9,8 +9,10 @@ const crypto = require("crypto");
 const { spawn } = require("child_process");
 const oc = require("./opencode");
 const ol = require("./ollama");
-// translate provider dispatch — key cards carry .provider (default opencode)
-const provOf = (card) => (card && card.provider === "ollama" ? ol : oc);
+// translate provider dispatch — key cards carry .provider (default opencode;
+// "local" = ollama daemon on this machine, no API key)
+const provOf = (card) => (card && card.provider === "local" ? ol.local
+  : card && card.provider === "ollama" ? ol : oc);
 
 const ROOT = __dirname;
 const PORT = 1345;
@@ -220,6 +222,20 @@ function maybeRefreshProxies() {
     { stdio: "ignore" });
   proc.on("exit", () => { proxyRefreshRunning = false; });
 }
+// TTS auto-heal: when the /api/tts upstream is down (e.g. the VieNeu server
+// wasn't restarted after a reboot), launch start-tts.bat once — the bat
+// re-checks the port itself, and the 60s throttle covers the ~35s model load
+// so a flood of failed requests can't double-spawn the python process.
+let ttsRestartedAt = 0;
+function ensureTtsServer() {
+  const now = Date.now();
+  if (now - ttsRestartedAt < 60000) return;
+  ttsRestartedAt = now;
+  try {
+    spawn("cmd.exe", ["/c", "start-tts.bat"],
+      { cwd: ROOT, detached: true, stdio: "ignore" }).unref();
+  } catch {}
+}
 function enqueueJob(id, base) {
   // CN workers fetch without proxies — adding a CN book shouldn't kick off a scan
   if (readMeta(id).lib !== "cn") maybeRefreshProxies();
@@ -383,7 +399,8 @@ const requestHandler = async (req, res) => {
       send(res, 200, JSON.stringify({
         active: c.active,
         keys: c.keys.map((k) => ({
-          name: k.name, model: k.model, key: oc.maskKey(k.key),
+          name: k.name, model: k.model,
+          key: k.provider === "local" ? "localhost:8399" : oc.maskKey(k.key),
           provider: k.provider || "opencode",
           models: k.models || [],
         })),
@@ -398,25 +415,36 @@ const requestHandler = async (req, res) => {
           const d = JSON.parse(body);
           const key = String(d.key || "").trim();
           const provider = String(d.provider || "opencode").toLowerCase();
-          if (!key) { send(res, 400, JSON.stringify({ error: "Thiếu API key" }), { "Content-Type": "application/json; charset=utf-8" }); return; }
+          // local ollama daemon needs no key — the card just marks the provider
+          if (!key && provider !== "local") { send(res, 400, JSON.stringify({ error: "Thiếu API key" }), { "Content-Type": "application/json; charset=utf-8" }); return; }
           const conf = oc.loadConf();
-          if (conf.keys.some((k) => k.key === key)) {
+          const dupe = provider === "local"
+            ? conf.keys.some((k) => k.provider === "local") // one local card is enough
+            : conf.keys.some((k) => k.key === key);
+          if (dupe) {
             send(res, 200, JSON.stringify({ exists: true }), { "Content-Type": "application/json; charset=utf-8" });
             return;
           }
-          // validate + discover models live — a bad key fails here, not mid-job
-          const api = provider === "ollama" ? ol : oc;
+          // validate + discover models live — a bad key (or a dead local
+          // server) fails here, not mid-job
+          const api = provider === "local" ? ol.local
+            : provider === "ollama" ? ol : oc;
           let models;
           try { models = await api.fetchModels(key); }
           catch (e) {
-            send(res, 400, JSON.stringify({ error: "Key không hợp lệ (" + (e.message || "lỗi mạng") + ")" }), { "Content-Type": "application/json; charset=utf-8" });
+            send(res, 400, JSON.stringify({ error: (provider === "local"
+              ? "Không kết nối được llama-server (daemon chưa chạy?) — "
+              : "Key không hợp lệ (") + (e.message || "lỗi mạng") + ")" }), { "Content-Type": "application/json; charset=utf-8" });
             return;
           }
           const name = "api" + (conf.keys.length + 1);
           // default model: deepseek-v4-flash benched fastest on opencode
           // (≈15s/chương, correct Hán-Việt names); gemma4:31b is the best
-          // free-plan model on ollama cloud (proper Hán-Việt + tool calls)
-          const pref = provider === "ollama"
+          // free-plan model on ollama cloud (proper Hán-Việt + tool calls);
+          // llama-server serves exactly the loaded model → models[0]
+          const pref = provider === "local"
+            ? []
+            : provider === "ollama"
             ? ["gemma4:31b", "gpt-oss:120b", "gpt-oss:20b", "nemotron-3-nano:30b"]
             : ["deepseek-v4-flash", "glm-5.3-flash", "glm-5.2",
               "deepseek-v4.1-flash", "muse-spark-1.3-contributor"];
@@ -472,7 +500,13 @@ const requestHandler = async (req, res) => {
       }
       try {
         const models = await provOf(card).fetchModels(card.key);
-        card.models = models; oc.saveConf(conf);
+        card.models = models;
+        // the served model may have changed since the card was added
+        // (e.g. a different GGUF loaded) — don't leave a dead id behind
+        if (!models.some((m) => m.id === card.model)) {
+          card.model = (models[0] || {}).id || "";
+        }
+        oc.saveConf(conf);
         send(res, 200, JSON.stringify(models), { "Content-Type": "application/json; charset=utf-8" });
       } catch (e) {
         send(res, 502, JSON.stringify({ error: String(e && e.message || e) }), { "Content-Type": "application/json; charset=utf-8" });
@@ -807,7 +841,10 @@ const requestHandler = async (req, res) => {
             "--workers=1"];
           if (b.model) args.push("--model=" + String(b.model));
           const proc = spawn(process.execPath, args, { stdio: "ignore" });
-          const killer = setTimeout(() => { try { proc.kill(); } catch {} }, 300000);
+          // local thinking models are slow (~4-5min/chunk cold) — a 300s
+          // cap would kill them mid-chapter
+          const killer = setTimeout(() => { try { proc.kill(); } catch {} },
+            card.provider === "local" ? 900000 : 300000);
           proc.on("exit", () => {
             clearTimeout(killer); trChap.delete(tk);
             try {
@@ -1006,47 +1043,158 @@ const requestHandler = async (req, res) => {
       return;
     }
 
-    // ---- TTS proxy (VieNeu @ :8001) ----
+    // ---- TTS proxy ----
+    // remote VieNeu @ ttb:8000 (tailscale, OpenAI-style /v1/audio/speech, no
+    // key) is the primary engine — synth happens off this machine, so the
+    // local ONNX model can stay unloaded and save the RAM it needs. local
+    // gateway @ :8002 (:8001 = admin panel) stays as per-request fallback
+    // and still handles enroll/remove_voice.
+    const TTS_REMOTE = "http://100.122.236.3:8000";
     const ttsEngines = {
-      "/api/tts": "http://localhost:8001",
+      "/api/tts": "http://localhost:8002",
     };
     for (const [prefix, upstream] of Object.entries(ttsEngines)) {
       if (urlPath === prefix + "/voices" && req.method === "GET") {
-        const up = http.get(upstream + "/voices", (r) => {
-          res.writeHead(r.statusCode, { "Content-Type": "application/json; charset=utf-8" });
-          r.pipe(res);
+        // merge both lists: remote first (primary), then local-only voices
+        // (e.g. user-enrolled clones) the remote doesn't know about
+        const grab = (u) => new Promise((done) => {
+          const g = http.get(u, (r) => {
+            let b = "";
+            r.on("data", (c) => { b += c; });
+            r.on("end", () => done(r.statusCode === 200 ? b : null));
+          });
+          g.on("error", () => done(null));
+          g.setTimeout(8000, () => { g.destroy(); done(null); });
         });
-        up.on("error", () => send(res, 502, "{}"));
-        up.setTimeout(10000, () => up.destroy());
+        Promise.all([grab(TTS_REMOTE + "/v1/voices"), grab(upstream + "/voices")])
+          .then(([rb, lb]) => {
+            const out = [], seen = {};
+            try {
+              for (const v of JSON.parse(rb).data || []) {
+                if (!v.id || seen[v.id]) continue;
+                seen[v.id] = 1;
+                // rebuild the local "⭐ id — desc" label so the client's
+                // Nam/Nữ grouping and featured star keep working
+                out.push({ id: v.id, name: (v.featured ? "⭐ " : "") + v.id +
+                  (v.description ? " — " + v.description : "") });
+              }
+            } catch {}
+            try {
+              for (const v of JSON.parse(lb) || []) {
+                if (!v.id || seen[v.id]) continue;
+                seen[v.id] = 1;
+                out.push(v);
+              }
+            } catch {}
+            if (out.length) {
+              res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+              res.end(JSON.stringify(out));
+            } else {
+              ensureTtsServer();
+              send(res, 502, "{}");
+            }
+          });
+        return;
+      }
+      if ((urlPath === prefix + "/enroll" || urlPath === prefix + "/remove_voice")
+          && req.method === "POST") {
+        let body = "";
+        req.on("data", (c) => { body += c; });
+        req.on("end", () => {
+          const up = http.request(
+            upstream + urlPath.slice(prefix.length),
+            { method: "POST", headers: { "Content-Type": "application/json" } },
+            (r) => {
+              res.writeHead(r.statusCode, { "Content-Type": "application/json; charset=utf-8" });
+              r.pipe(res);
+            }
+          );
+          up.on("error", () => { ensureTtsServer(); send(res, 502, "{}"); });
+          up.setTimeout(120000, () => up.destroy());   // enroll extracts embedding — can take ~30s
+          up.end(body);
+        });
         return;
       }
       if (urlPath === prefix + "/stream" && req.method === "GET") {
         const q = new URL(req.url, "http://x").searchParams;
         const text = q.get("text") || "";
         const vid = q.get("voice_id") || "";
+        const engine = q.get("engine") || "auto";   // auto | remote | local
         if (!text.trim() || text.length > 2000) {
           send(res, 400, "{}");
           return;
         }
-        const up = http.get(
-          upstream + "/stream?text=" + encodeURIComponent(text) +
-            "&voice_id=" + encodeURIComponent(vid),
-          (r) => {
-            res.writeHead(r.statusCode, { "Content-Type": "audio/wav" });
-            r.pipe(res);
-          }
-        );
-        up.on("error", () => { try { res.writeHead(502); res.end(); } catch {} });
-        // abort upstream synth only if the client truly went away —
-        // req 'close' fires early under keep-alive, res 'close' before
-        // writableEnded means the client socket died mid-stream
-        res.on("close", () => { if (!res.writableEnded) up.destroy(); });
+        // abort the in-flight upstream synth only if the client truly went
+        // away — req 'close' fires early under keep-alive, res 'close'
+        // before writableEnded means the client socket died mid-stream
+        let cur = null, fellBack = false, dead = false;
+        res.on("close", () => {
+          if (!res.writableEnded) { dead = true; if (cur) cur.destroy(); }
+        });
+        const toLocal = () => {
+          if (dead || fellBack) return;
+          fellBack = true;
+          const up = cur = http.get(
+            upstream + "/stream?text=" + encodeURIComponent(text) +
+              "&voice_id=" + encodeURIComponent(vid),
+            (r) => {
+              if (res.headersSent) { r.resume(); return; }
+              res.writeHead(r.statusCode, { "Content-Type": "audio/wav" });
+              r.pipe(res);
+            }
+          );
+          // don't let a stuck synth pin the request forever — the client
+          // aborts at 40s; kill the upstream a little after that
+          up.setTimeout(45000, () => up.destroy());
+          up.on("error", () => { ensureTtsServer(); try { res.writeHead(502); res.end(); } catch {} });
+        };
+        // once remote bytes are flowing we can't switch engines anymore —
+        // a mid-stream failure just ends the response; the client's
+        // bad-audio check re-rolls the segment
+        const remoteDead = () => { try { res.end(); } catch {} };
+        // engine=remote pins the remote engine: no silent local fallback
+        const failReq = () => { try { res.writeHead(502); res.end(); } catch {} };
+        const remoteFail = engine === "remote" ? failReq : toLocal;
+        // remote answers 429 while its single synth slot + wait queue are
+        // full — retry briefly (synth is ~1-3s/seg) before giving up
+        const rbody = JSON.stringify({ input: text, voice: vid, response_format: "wav" });
+        let tries = 0;
+        const tryRemote = () => {
+          if (dead) return;
+          const up = cur = http.request(
+            TTS_REMOTE + "/v1/audio/speech",
+            { method: "POST",
+              headers: { "Content-Type": "application/json",
+                         "Content-Length": Buffer.byteLength(rbody) } },
+            (r) => {
+              if (r.statusCode === 200) {
+                res.writeHead(200, { "Content-Type": "audio/wav" });
+                r.pipe(res);
+              } else {
+                r.resume();
+                if (r.statusCode === 429 && ++tries <= 6) {
+                  setTimeout(tryRemote, 400);
+                } else {
+                  remoteFail();
+                }
+              }
+            }
+          );
+          up.setTimeout(30000, () => {
+            up.destroy();
+            if (res.headersSent) remoteDead(); else remoteFail();
+          });
+          up.on("error", () => { if (res.headersSent) remoteDead(); else remoteFail(); });
+          up.end(rbody);
+        };
+        if (engine === "local") toLocal(); else tryRemote();
         return;
       }
     }
 
     // ---- static ----
     if (urlPath === "/") urlPath = "/index.html";
+    else if (urlPath.endsWith("/")) urlPath += "index.html";
 
     const PUB = path.join(ROOT, "public");
     const filePath = path.normalize(path.join(PUB, urlPath));
