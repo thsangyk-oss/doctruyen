@@ -761,6 +761,8 @@ body.tts-on #tts-mini { transform: translate(-50%, 0); opacity: 1; pointer-event
 }
 .ts-off .ic { width: 16px; height: 16px; }
 .ts-off:hover { color: var(--danger); border-color: var(--danger); }
+.ts-restart:hover { color: var(--accent); border-color: var(--accent); }
+.ts-restart:disabled { opacity: .55; cursor: wait; }
 
 /* ---------- resume pill ---------- */
 /* desktop: bottom-right, in the empty margin beside the text column */

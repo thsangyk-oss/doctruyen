@@ -1822,11 +1822,67 @@
       ttsFetch(i + 1); ttsFetch(i + 2); ttsFetch(i + 3);
       ttsFetch(i + 4); ttsFetch(i + 5);
       if (i >= tts.segs.length - 3) ttsPreloadNext(); // seamless chapter hand-off
-    }).catch(function () {
+    }).then(function (ok) {
+      if (ok !== false) tts.failStreak = 0;
+    }, function () {
       if (!tts.on || g !== tts.gen) return;
+      tts.failStreak = (tts.failStreak || 0) + 1;
+      // 2 failures in a row = the TTS server is likely down/hung -> ask the
+      // reader server to (re)start it, wait for it, then resume this segment
+      if (tts.failStreak >= 2) {
+        ttsRecover(false).then(function (up) {
+          if (up && tts.on && g === tts.gen) ttsPlay(i);
+        });
+        return;
+      }
       ttsStatus("Lỗi tổng hợp — thử lại đoạn " + (i + 1));
       setTimeout(function () { if (tts.on && g === tts.gen) ttsPlay(i); }, 3000);
     });
+  }
+
+  // restart the VieNeu server via /api/tts/restart and poll /api/tts/health
+  // until it answers again (~20-40s model load). Resolves either way; one
+  // recovery at a time — concurrent callers share the same promise.
+  var ttsRecovering = null;
+  function ttsRecover(manual) {
+    if (ttsRecovering) return ttsRecovering;
+    var t0 = Date.now(), LIMIT = 150000, wasUp = false;
+    function secs() { return Math.round((Date.now() - t0) / 1000) + "s"; }
+    ttsStatus(manual ? "Đang khởi động lại TTS…" : "TTS không phản hồi — đang khởi động lại…");
+    ttsLoading(true);
+    ttsRecovering = fetch("/api/tts/restart", { method: "POST" })
+      .then(function (r) { return r.json(); })
+      .catch(function () { return {}; })
+      .then(function (rr) {
+        wasUp = rr && rr.result === "up";
+        return new Promise(function (done) {
+          (function poll() {
+            fetch("/api/tts/health").then(function (r) { return r.json(); })
+              .catch(function () { return {}; })
+              .then(function (h) {
+                if (h.up) return done(true);
+                if (Date.now() - t0 > LIMIT) return done(false);
+                ttsStatus("Đang khởi động lại TTS… " + secs());
+                setTimeout(poll, 3000);
+              });
+          })();
+        });
+      })
+      .then(function (up) {
+        ttsRecovering = null;
+        tts.failStreak = 0;
+        ttsLoading(false);
+        if (up) {
+          ttsClearBuf(); ttsClearNext(); // drop rejected/stale prefetches
+          ttsStatus(wasUp ? "TTS vẫn đang hoạt động bình thường"
+            : "TTS đã chạy lại" + (tts.on && tts.playing ? " — đọc tiếp" : ""));
+        } else {
+          if (!manual && tts.on) ttsPause();
+          ttsStatus("Chưa khởi động lại được TTS — bấm “Khởi động lại TTS” để thử lại");
+        }
+        return up;
+      });
+    return ttsRecovering;
   }
 
   tts.audio.addEventListener("playing", function () { ttsLoading(false); });
@@ -1862,7 +1918,7 @@
   setInterval(function () {
     if (!tts.on) return;
     if (ttsKeepAlive.paused) ttsKeepAlive.play().catch(function () {});
-    if (!tts.playing || seeking || !tts.audio.paused) return;
+    if (!tts.playing || seeking || !tts.audio.paused || ttsRecovering) return;
     if (tts.pendingStart && tts.jumpTo) {
       go(tts.jumpTo); // chapter navigation stalled mid-flight — re-issue
       return;
@@ -2026,6 +2082,16 @@
     ttsStop();
     tts.idx = i;
     if (was) ttsPlay(i); else ttsStatus("Đã đổi giọng · bấm ▶ để đọc tiếp");
+  });
+  $("tts-restart").addEventListener("click", function () {
+    var btn = this;
+    btn.disabled = true;
+    var i = tts.idx, was = tts.on && tts.playing;
+    if (was) ttsPause();
+    ttsRecover(true).then(function (up) {
+      btn.disabled = false;
+      if (up && was && tts.on) ttsPlay(i);
+    });
   });
   $("tts-engine").value = tts.engine;
   $("tts-engine").addEventListener("change", function () {

@@ -6,7 +6,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { spawn } = require("child_process");
+const { spawn, execFile } = require("child_process");
 const oc = require("./opencode");
 const ol = require("./ollama");
 // translate provider dispatch — key cards carry .provider (default opencode;
@@ -226,16 +226,77 @@ function maybeRefreshProxies() {
 // wasn't restarted after a reboot), launch start-tts.bat once — the bat
 // re-checks the port itself, and the 60s throttle covers the ~35s model load
 // so a flood of failed requests can't double-spawn the python process.
-let ttsRestartedAt = 0;
-function ensureTtsServer() {
-  const now = Date.now();
-  if (now - ttsRestartedAt < 60000) return;
-  ttsRestartedAt = now;
-  try {
-    spawn("cmd.exe", ["/c", "start-tts.bat"],
-      { cwd: ROOT, detached: true, stdio: "ignore" }).unref();
-  } catch {}
+// Also handles the "hung" case: port 8000 still listening but the server no
+// longer answers — kill that python so serve-tailscale.ps1's loop restarts it.
+const TTS_URL = "http://100.122.236.3:8000";
+const ttsHeal = { at: 0, running: false, result: "", reason: "" };
+function ttsProbe(timeout = 6000) {
+  return new Promise((done) => {
+    const g = http.get(TTS_URL + "/v1/voices", (r) => { r.resume(); done(r.statusCode === 200); });
+    g.setTimeout(timeout, () => { g.destroy(); done(false); });
+    g.on("error", () => done(false));
+  });
 }
+function cleanEnv() {
+  // cmd won't search cwd for the bat when the inherited env has
+  // NoDefaultCurrentDirectoryInExePath set — heal used to fail silently
+  const env = Object.assign({}, process.env);
+  delete env.NoDefaultCurrentDirectoryInExePath;
+  return env;
+}
+function ttsPortInfo() {
+  // -> { pid: listener on :8000 or 0, wrappers: running serve-tailscale.ps1 loops }
+  const ps = "$l = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | " +
+    "Select-Object -First 1 -ExpandProperty OwningProcess; " +
+    "$w = @(Get-CimInstance Win32_Process -Filter \"Name='powershell.exe'\" | " +
+    // exclude this probe itself — its own command line mentions the script
+    "Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -match 'serve-tailscale\\.ps1' }).Count; \"$l|$w\"";
+  return new Promise((done) => {
+    execFile("powershell.exe", ["-NoProfile", "-Command", ps],
+      { env: cleanEnv(), timeout: 20000, windowsHide: true }, (err, out) => {
+        const [pid, w] = String(out || "").trim().split("|");
+        done({ pid: +pid || 0, wrappers: +w || 0 });
+      });
+  });
+}
+async function healTts(reason, minGap) {
+  if (ttsHeal.running) return "busy";
+  if (Date.now() - ttsHeal.at < minGap) return "throttled";
+  ttsHeal.running = true;
+  ttsHeal.at = Date.now();
+  ttsHeal.reason = reason;
+  let result = "up";
+  try {
+    // two probes 3s apart so one slow answer under load doesn't get it killed
+    if (await ttsProbe()) return (result = "up");
+    await new Promise((r) => setTimeout(r, 3000));
+    if (await ttsProbe()) return (result = "up");
+    const info = await ttsPortInfo();
+    if (info.pid) {
+      try { process.kill(info.pid); } catch {}
+      result = "killed-hung";
+    } else {
+      result = "starting";
+    }
+    if (!info.wrappers) {
+      // no restart loop alive -> launch it (bat re-checks the port first)
+      await new Promise((r) => setTimeout(r, 1500));
+      spawn("cmd.exe", ["/c", path.join(ROOT, "start-tts.bat")],
+        { cwd: ROOT, env: cleanEnv(), detached: true, stdio: "ignore", windowsHide: true }).unref();
+      result += "+launched";
+    }
+    return result;
+  } catch (e) {
+    return (result = "error: " + (e.message || e));
+  } finally {
+    ttsHeal.running = false;
+    ttsHeal.result = result;
+    if (result !== "up") console.log(new Date().toISOString(), "TTS heal (" + reason + "):", result);
+  }
+}
+// fire-and-forget from upstream error paths; 60s throttle covers the
+// ~20-35s model load so a flood of failures can't double-spawn
+function ensureTtsServer() { healTts("auto", 60000).catch(() => {}); }
 function enqueueJob(id, base) {
   // CN workers fetch without proxies — adding a CN book shouldn't kick off a scan
   if (readMeta(id).lib !== "cn") maybeRefreshProxies();
@@ -1044,14 +1105,26 @@ const requestHandler = async (req, res) => {
     }
 
     // ---- TTS proxy ----
-    // remote VieNeu @ ttb:8000 (tailscale, OpenAI-style /v1/audio/speech, no
-    // key) is the primary engine — synth happens off this machine, so the
-    // local ONNX model can stay unloaded and save the RAM it needs. local
-    // gateway @ :8002 (:8001 = admin panel) stays as per-request fallback
-    // and still handles enroll/remove_voice.
-    const TTS_REMOTE = "http://100.122.236.3:8000";
+    // VieNeu @ 100.122.236.3:8000 (tailscale-bound, OpenAI-style) runs on THIS
+    // machine — single engine for stream + voices + enroll/remove_voice.
+    const TTS_REMOTE = TTS_URL;
+    // health + on-demand restart, called by the reader when synthesis keeps
+    // failing (or by the "Khởi động lại TTS" button)
+    if (urlPath === "/api/tts/health" && req.method === "GET") {
+      const up = await ttsProbe(5000);
+      send(res, 200, JSON.stringify({ up, healing: ttsHeal.running,
+        lastHeal: ttsHeal.at ? { at: ttsHeal.at, result: ttsHeal.result, reason: ttsHeal.reason } : null }),
+        { "Content-Type": "application/json; charset=utf-8" });
+      return;
+    }
+    if (urlPath === "/api/tts/restart" && req.method === "POST") {
+      const result = await healTts("manual", 20000);
+      send(res, 200, JSON.stringify({ ok: true, result }),
+        { "Content-Type": "application/json; charset=utf-8" });
+      return;
+    }
     const ttsEngines = {
-      "/api/tts": "http://localhost:8002",
+      "/api/tts": TTS_REMOTE,
     };
     for (const [prefix, upstream] of Object.entries(ttsEngines)) {
       if (urlPath === prefix + "/voices" && req.method === "GET") {
@@ -1098,20 +1171,40 @@ const requestHandler = async (req, res) => {
       }
       if ((urlPath === prefix + "/enroll" || urlPath === prefix + "/remove_voice")
           && req.method === "POST") {
+        // translate the old gateway contract ({name, ref_wav|name} JSON) onto
+        // VieNeu's OpenAI-style API: POST /v1/voices (multipart) + DELETE
+        // /v1/voices/<name>. Client wants {ok, total} back.
         let body = "";
         req.on("data", (c) => { body += c; });
-        req.on("end", () => {
-          const up = http.request(
-            upstream + urlPath.slice(prefix.length),
-            { method: "POST", headers: { "Content-Type": "application/json" } },
-            (r) => {
-              res.writeHead(r.statusCode, { "Content-Type": "application/json; charset=utf-8" });
-              r.pipe(res);
+        req.on("end", async () => {
+          const json = (o) => send(res, 200, JSON.stringify(o), { "Content-Type": "application/json; charset=utf-8" });
+          try {
+            const d = JSON.parse(body);
+            let r;
+            if (urlPath.endsWith("/enroll")) {
+              const clip = path.isAbsolute(d.ref_wav || "")
+                ? d.ref_wav
+                : path.join(ROOT, "public", "voicepicker", d.ref_wav || "");
+              const fd = new FormData();
+              fd.set("name", String(d.name || ""));
+              fd.set("description", [d.gender, d.description].filter(Boolean).join(" - "));
+              fd.set("file", new Blob([fs.readFileSync(clip)]), path.basename(clip));
+              r = await fetch(upstream + "/v1/voices", { method: "POST", body: fd, signal: AbortSignal.timeout(120000) });
+            } else {
+              r = await fetch(upstream + "/v1/voices/" + encodeURIComponent(d.name || ""),
+                { method: "DELETE", signal: AbortSignal.timeout(30000) });
             }
-          );
-          up.on("error", () => { ensureTtsServer(); send(res, 502, "{}"); });
-          up.setTimeout(120000, () => up.destroy());   // enroll extracts embedding — can take ~30s
-          up.end(body);
+            const dj = await r.json().catch(() => ({}));
+            if (!r.ok) {
+              return json({ ok: false, error: (dj.error && dj.error.message) || dj.detail || ("HTTP " + r.status) });
+            }
+            const vs = await fetch(upstream + "/v1/voices", { signal: AbortSignal.timeout(8000) })
+              .then((x) => x.json()).catch(() => null);
+            json({ ok: true, total: vs && vs.data ? vs.data.length : 0 });
+          } catch (e) {
+            ensureTtsServer();
+            json({ ok: false, error: String(e.message || e) });
+          }
         });
         return;
       }
@@ -1134,9 +1227,13 @@ const requestHandler = async (req, res) => {
         const toLocal = () => {
           if (dead || fellBack) return;
           fellBack = true;
-          const up = cur = http.get(
-            upstream + "/stream?text=" + encodeURIComponent(text) +
-              "&voice_id=" + encodeURIComponent(vid),
+          // same OpenAI-style endpoint as remote — upstream is the same
+          // VieNeu server on this machine, so "local" just retries it
+          const up = cur = http.request(
+            upstream + "/v1/audio/speech",
+            { method: "POST",
+              headers: { "Content-Type": "application/json",
+                         "Content-Length": Buffer.byteLength(rbody) } },
             (r) => {
               if (res.headersSent) { r.resume(); return; }
               res.writeHead(r.statusCode, { "Content-Type": "audio/wav" });
@@ -1147,13 +1244,14 @@ const requestHandler = async (req, res) => {
           // aborts at 40s; kill the upstream a little after that
           up.setTimeout(45000, () => up.destroy());
           up.on("error", () => { ensureTtsServer(); try { res.writeHead(502); res.end(); } catch {} });
+          up.end(rbody);
         };
         // once remote bytes are flowing we can't switch engines anymore —
         // a mid-stream failure just ends the response; the client's
         // bad-audio check re-rolls the segment
         const remoteDead = () => { try { res.end(); } catch {} };
         // engine=remote pins the remote engine: no silent local fallback
-        const failReq = () => { try { res.writeHead(502); res.end(); } catch {} };
+        const failReq = () => { ensureTtsServer(); try { res.writeHead(502); res.end(); } catch {} };
         const remoteFail = engine === "remote" ? failReq : toLocal;
         // remote answers 429 while its single synth slot + wait queue are
         // full — retry briefly (synth is ~1-3s/seg) before giving up

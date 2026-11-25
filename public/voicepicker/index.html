@@ -569,7 +569,7 @@ async function enroll(i,wav,g){
  btn.disabled=true; st.textContent='đang enroll…'; st.className='st';
  const name=document.getElementById('n'+i).value.trim()||('Sidon '+i);
  const r=await fetch('/api/tts/enroll',{method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({name,ref_wav:'C:/Users/ADMIN/Documents/Doctruyen/public/voicepicker/clips/'+wav,gender:g,description:'giọng từ kho Sidon'})});
+  body:JSON.stringify({name,ref_wav:'clips/'+wav,gender:g,description:'giọng từ kho Sidon'})});
  const d=await r.json();
  if(d.ok){st.innerHTML='✓ đã thêm (tổng '+d.total+') <a href="#" onclick="rm('+i+',\''+name.replace(/'/g,"\\'")+'\');return false" style="color:#e77">xóa</a>'}
  else{st.textContent='✗ '+(d.error||'lỗi');st.className='st err';btn.disabled=false}

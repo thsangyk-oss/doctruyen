@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="Truyện">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="preload" href="/fonts/literata-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=16">
+<link rel="stylesheet" href="/style.css?v=17">
 </head>
 <body data-theme="sepia">
 
@@ -272,6 +272,7 @@
         <button data-sleep="ch">Hết chương</button>
       </div>
     </div>
+    <button id="tts-restart" class="ts-off ts-restart" title="Khởi động lại máy chủ giọng đọc khi TTS bị lỗi"><svg class="ic"><use href="#i-refresh"/></svg>Khởi động lại TTS</button>
     <button id="tts-close" class="ts-off"><svg class="ic"><use href="#i-x"/></svg>Tắt trình đọc</button>
   </div>
 </div>
@@ -379,7 +380,7 @@
 <div id="page-ind"></div>
 <div id="toast"></div>
 
-<script src="/app.js?v=22"></script>
+<script src="/app.js?v=23"></script>
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", function () {
